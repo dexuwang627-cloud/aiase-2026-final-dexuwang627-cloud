@@ -1,0 +1,2 @@
+# No external dependencies for SQL validation
+# Python standard library only
