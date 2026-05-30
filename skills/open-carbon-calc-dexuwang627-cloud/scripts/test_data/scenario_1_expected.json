@@ -1,0 +1,28 @@
+{
+  "breakdown": [
+    {
+      "scope": 2,
+      "category": "electricity",
+      "consumption_kwh": 1200,
+      "emission_factor": 0.474,
+      "emission_factor_unit": "kg_co2e/kWh",
+      "region": "TW",
+      "year": "2024",
+      "kg_co2e": 568.8,
+      "source": "經濟部能源署 2025/4/14 公告"
+    },
+    {
+      "scope": 1,
+      "category": "refrigerant_leakage",
+      "refrigerant": "R410A",
+      "leakage_kg": 5,
+      "gwp": 1924,
+      "ar_version": "ar5",
+      "kg_co2e": 9620,
+      "source": "IPCC AR5/AR6"
+    }
+  ],
+  "scope1_kg_co2e": 9620,
+  "scope2_kg_co2e": 568.8,
+  "total_kg_co2e": 10188.8
+}

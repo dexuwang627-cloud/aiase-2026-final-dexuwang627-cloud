@@ -1,0 +1,53 @@
+{
+  "electricity": {
+    "TW": {
+      "2024": 0.474,
+      "unit": "kg_co2e_per_kwh",
+      "source": "經濟部能源署 2025/4/14 公告"
+    }
+  },
+  "fuel": {
+    "diesel": {
+      "co2_kg_per_liter": 2.68,
+      "heating_value_mj_per_liter": 35.28,
+      "co2_factor_kg_per_tj": 74100,
+      "unit": "L",
+      "source": "IPCC 2006 Tier 1, 台灣清冊"
+    },
+    "natural_gas": {
+      "co2_kg_per_m3": 2.02,
+      "heating_value_mj_per_m3": 36.0,
+      "co2_factor_kg_per_tj": 56100,
+      "unit": "m³",
+      "source": "IPCC 2006 Tier 1"
+    },
+    "lpg": {
+      "co2_kg_per_kg": 2.98,
+      "heating_value_mj_per_kg": 47.3,
+      "co2_factor_kg_per_tj": 63100,
+      "unit": "kg",
+      "source": "IPCC 2006 Tier 1"
+    },
+    "coal": {
+      "co2_kg_per_kg": 2.15,
+      "heating_value_mj_per_kg": 22.7,
+      "co2_factor_kg_per_tj": 94600,
+      "unit": "kg",
+      "source": "IPCC 2006 Tier 1"
+    }
+  },
+  "refrigerant": {
+    "R410A": {"gwp_ar5": 1924, "gwp_ar6": 2256, "source": "IPCC AR5/AR6"},
+    "R32": {"gwp_ar5": 677, "gwp_ar6": 771, "source": "IPCC AR5/AR6"},
+    "R134a": {"gwp_ar5": 1300, "gwp_ar6": 1530, "source": "IPCC AR5/AR6"},
+    "R407C": {"gwp_ar5": 1624, "gwp_ar6": 1908, "source": "IPCC AR5/AR6"},
+    "R22": {"gwp_ar5": 1760, "gwp_ar6": 1960, "source": "IPCC AR5/AR6"}
+  },
+  "vehicle": {
+    "gasoline_car": {"factor_kg_co2_per_km": 0.192, "source": "EPA Taiwan"},
+    "diesel_car": {"factor_kg_co2_per_km": 0.171, "source": "EPA Taiwan"},
+    "motorcycle": {"factor_kg_co2_per_km": 0.055, "source": "EPA Taiwan"},
+    "bus": {"factor_kg_co2_per_km": 0.078, "source": "EPA Taiwan"},
+    "ev": {"factor_kg_co2_per_km": 0.071, "source": "EPA Taiwan"}
+  }
+}

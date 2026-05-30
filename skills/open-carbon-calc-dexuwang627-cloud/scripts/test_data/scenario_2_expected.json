@@ -1,0 +1,29 @@
+{
+  "breakdown": [
+    {
+      "scope": 1,
+      "category": "fuel_combustion",
+      "fuel_type": "diesel",
+      "amount": 500,
+      "unit": "L",
+      "emission_factor": 2.68,
+      "emission_factor_unit": "kg_co2e/L",
+      "kg_co2e": 1340.0,
+      "source": "IPCC 2006 Tier 1, 台灣清冊"
+    },
+    {
+      "scope": 1,
+      "category": "fuel_combustion",
+      "fuel_type": "natural_gas",
+      "amount": 200,
+      "unit": "m³",
+      "emission_factor": 2.02,
+      "emission_factor_unit": "kg_co2e/m³",
+      "kg_co2e": 404.0,
+      "source": "IPCC 2006 Tier 1"
+    }
+  ],
+  "scope1_kg_co2e": 1744.0,
+  "scope2_kg_co2e": 0,
+  "total_kg_co2e": 1744.0
+}

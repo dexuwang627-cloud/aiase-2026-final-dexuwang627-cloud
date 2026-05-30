@@ -1,0 +1,37 @@
+{
+  "breakdown": [
+    {
+      "scope": 1,
+      "category": "refrigerant_leakage",
+      "refrigerant": "R410A",
+      "leakage_kg": 3,
+      "gwp": 1924,
+      "ar_version": "ar5",
+      "kg_co2e": 5772,
+      "source": "IPCC AR5/AR6"
+    },
+    {
+      "scope": 1,
+      "category": "refrigerant_leakage",
+      "refrigerant": "R32",
+      "leakage_kg": 2,
+      "gwp": 677,
+      "ar_version": "ar5",
+      "kg_co2e": 1354,
+      "source": "IPCC AR5/AR6"
+    },
+    {
+      "scope": 1,
+      "category": "refrigerant_leakage",
+      "refrigerant": "R134a",
+      "leakage_kg": 1.5,
+      "gwp": 1300,
+      "ar_version": "ar5",
+      "kg_co2e": 1950.0,
+      "source": "IPCC AR5/AR6"
+    }
+  ],
+  "scope1_kg_co2e": 9076.0,
+  "scope2_kg_co2e": 0,
+  "total_kg_co2e": 9076.0
+}
