@@ -1,28 +1,44 @@
-# Open Track: Carbon Emission Calculator
+<!--
+   Open Track 宣告 — 七個 heading 請照抄,順序也別動。
+   合規判定會自動解析這七節;少一節就 fail gate。
+   詳細要求見規格書 §2.4 與 §4.3。
+-->
 
-## Skill Name & Purpose
+## 1. Skill 簡介
 
-**Name**: open-carbon-calc-dexuwang627-cloud
+台灣碳盤查碳足跡計算器：從自然語言描述計算碳排放量（kg CO₂e）。涵蓋 Scope 1（燃料燃燒、冷媒逸散、交通運輸）與 Scope 2（外購電力）。採用「deterministic shell wrapping probabilistic core」架構：LLM 負責語意理解與參數提取，所有數值計算由 `scripts/calculate.py` 執行，確保算術正確性不受模型影響。
 
-**Purpose**: Calculate carbon emissions (kg CO₂e) from natural-language descriptions of organizational activities. Designed for Taiwan-context carbon inventory (碳盤查), covering Scope 1 (direct emissions: fuel combustion, refrigerant leakage, transportation) and Scope 2 (indirect electricity emissions).
+## 2. Skill 名稱與目錄
 
-The skill embodies the "deterministic shell wrapping probabilistic core" architecture: the LLM handles natural language understanding and parameter extraction, while all numeric calculations are performed by deterministic Python scripts using authoritative emission factors.
+`skills/open-carbon-calc-dexuwang627-cloud/`
 
-## Scenarios
+## 3. 呼叫方式
 
-### Scenario 1: Office Combined Emission (Scope 1+2)
+**Slash command:**
 
-**Input**: "我們辦公室每月用電 1200 度，冷氣使用 R410A 冷媒 5 公斤逸散"
+```
+/open-carbon-calc-dexuwang627-cloud
+```
 
-**Expected output**:
+**輸入 JSON 範例:**
+
+```json
+{
+  "task_id": "scenario_1",
+  "input": "我們辦公室每月用電 1200 度，冷氣使用 R410A 冷媒 5 公斤逸散"
+}
+```
+
+**輸出 JSON 範例(此即輸出 schema):**
+
 ```json
 {
   "task_id": "scenario_1",
   "category": "combined",
   "scope": null,
-  "emission_breakdown": [
-    {"scope": 2, "category": "electricity", "consumption_kwh": 1200, "emission_factor": 0.474, "emission_factor_unit": "kg_co2e/kWh", "region": "TW", "year": "2024", "kg_co2e": 568.8, "source": "經濟部能源署 2025/4/14 公告"},
-    {"scope": 1, "category": "refrigerant_leakage", "refrigerant": "R410A", "leakage_kg": 5, "gwp": 1924, "ar_version": "ar5", "kg_co2e": 9620, "source": "IPCC AR5/AR6"}
+  "breakdown": [
+    {"scope": 2, "category": "electricity", "consumption_kwh": 1200, "emission_factor": 0.474, "kg_co2e": 568.8},
+    {"scope": 1, "category": "refrigerant_leakage", "refrigerant": "R410A", "leakage_kg": 5, "gwp": 1924, "kg_co2e": 9620}
   ],
   "scope1_kg_co2e": 9620,
   "scope2_kg_co2e": 568.8,
@@ -32,105 +48,54 @@ The skill embodies the "deterministic shell wrapping probabilistic core" archite
 }
 ```
 
-**Evaluator**: Checks total, scope1, and scope2 values against ground truth with ±5% tolerance.
+## 4. 自定 Verifiable Scenario
 
-### Scenario 2: Multi-Fuel Calculation (Scope 1)
+**Scenario 1: 辦公室綜合排放（Scope 1+2）**
 
-**Input**: "公司車隊本月消耗柴油 500 公升和天然氣 200 立方公尺"
+輸入：「我們辦公室每月用電 1200 度，冷氣使用 R410A 冷媒 5 公斤逸散」
 
-**Expected output**:
-```json
-{
-  "task_id": "scenario_2",
-  "category": "combined",
-  "scope": null,
-  "emission_breakdown": [
-    {"scope": 1, "category": "fuel_combustion", "fuel_type": "diesel", "amount": 500, "unit": "L", "emission_factor": 2.68, "emission_factor_unit": "kg_co2e/L", "kg_co2e": 1340.0, "source": "IPCC 2006 Tier 1, 台灣清冊"},
-    {"scope": 1, "category": "fuel_combustion", "fuel_type": "natural_gas", "amount": 200, "unit": "m³", "emission_factor": 2.02, "emission_factor_unit": "kg_co2e/m³", "kg_co2e": 404.0, "source": "IPCC 2006 Tier 1"}
-  ],
-  "scope1_kg_co2e": 1744.0,
-  "scope2_kg_co2e": 0,
-  "total_kg_co2e": 1744.0,
-  "confidence": 0.9,
-  "rationale": "Two fuel types identified: diesel and natural gas. Called calculate.py for each fuel, then combined."
-}
-```
+預期輸出：total_kg_co2e = 10188.8, scope1_kg_co2e = 9620, scope2_kg_co2e = 568.8
 
-**Evaluator**: Checks total and each fuel type's emission against ground truth with ±5% tolerance.
+**Scenario 2: 多燃料燃燒（Scope 1）**
 
-### Scenario 3: Multi-Refrigerant with AR Version (Scope 1)
+輸入：「公司車隊本月消耗柴油 500 公升和天然氣 200 立方公尺」
 
-**Input**: "空調系統冷媒逸散：R410A 3kg、R32 2kg、R134a 1.5kg"
+預期輸出：total_kg_co2e = 1744.0, 柴油 kg_co2e = 1340.0, 天然氣 kg_co2e = 404.0
 
-**Expected output**:
-```json
-{
-  "task_id": "scenario_3",
-  "category": "combined",
-  "scope": null,
-  "emission_breakdown": [
-    {"scope": 1, "category": "refrigerant_leakage", "refrigerant": "R410A", "leakage_kg": 3, "gwp": 1924, "ar_version": "ar5", "kg_co2e": 5772, "source": "IPCC AR5/AR6"},
-    {"scope": 1, "category": "refrigerant_leakage", "refrigerant": "R32", "leakage_kg": 2, "gwp": 677, "ar_version": "ar5", "kg_co2e": 1354, "source": "IPCC AR5/AR6"},
-    {"scope": 1, "category": "refrigerant_leakage", "refrigerant": "R134a", "leakage_kg": 1.5, "gwp": 1300, "ar_version": "ar5", "kg_co2e": 1950.0, "source": "IPCC AR5/AR6"}
-  ],
-  "scope1_kg_co2e": 9076.0,
-  "scope2_kg_co2e": 0,
-  "total_kg_co2e": 9076.0,
-  "confidence": 0.9,
-  "rationale": "Three refrigerants identified with AR5 GWP values. Called calculate.py for each, then combined."
-}
-```
+**Scenario 3: 多冷媒逸散（Scope 1, AR5）**
 
-**Evaluator**: Checks total, each refrigerant's GWP value (exact match), and each emission value (±5% tolerance).
+輸入：「空調系統冷媒逸散：R410A 3kg、R32 2kg、R134a 1.5kg」
 
-## Evaluator Design
+預期輸出：total_kg_co2e = 9076.0, R410A GWP=1924, R32 GWP=677, R134a GWP=1300
 
-The evaluator (`scripts/evaluator.py`) performs deterministic comparison:
+**Metric:** 評分器 `scripts/evaluator.py` 從 `calculate.py` 動態生成 ground truth，以 ±5% 相對誤差比對數值、GWP 整數精確比對。每個 scenario 的 score = passed_checks / total_checks。
 
-- **Numeric values**: Approximate equality with ±5% tolerance (`|a-b| / max(|a|,|b|) ≤ 0.05`)
-- **GWP values**: Exact integer match (authoritative constants, no tolerance)
-- **Scoring**: `passed_checks / total_checks` per scenario
+**為何不可 gameable:**
+1. Ground truth 由 `calculate.py` 動態生成——若 staff 更改 `emission_factors.json` 中的係數，ground truth 自動跟著變，hardcoded 答案立即失效。
+2. 排放係數外部化在 JSON 檔案，非 hardcoding 在 prompt 中，staff 可做 perturbation 測試。
+3. GWP 值為權威常數（IPCC AR5/AR6），不容許公差，精確比對杜絕猜測。
+4. AR 版本可切換（AR5↔AR6），同一冷媒在不同 AR 版本下有不同 GWP，hardcoded 無法應對。
 
-Each scenario has multiple check points:
-- Scenario 1: total, scope1, scope2 (3 checks)
-- Scenario 2: total, per-fuel emissions (3 checks)
-- Scenario 3: total, per-refrigerant GWP + emissions (7 checks)
+## 5. 預期失敗模式
 
-## Anti-Hardcoding Measures
+- **失敗 1: LLM 誤判排放類別**（觸發點：輸入含多種排放源但描述模糊 / 處理：SKILL.md 提供關鍵字對照表作為 fallback，並降低 confidence）
+- **失敗 2: LLM 自行計算而非呼叫 scripts**（觸發點：模型過度自信跳過計算步驟 / 處理：SKILL.md 明確禁止手動計算，evaluator 以 ±5% 容差比對，偏差超過 5% 即判失敗）
+- **失敗 3: 數字提取錯誤**（觸發點：輸入含多個數字，模型無法正確配對數字與其指涉對象 / 處理：SKILL.md 指示 LLM 逐一辨識每個數字的 referent，confidence 降低）
+- **失敗 4: AR 版本混淆**（觸發點：使用者未指定 AR 版本 / 處理：預設 AR5，並在 rationale 中註明）
+- **失敗 5: JSON schema 違規**（觸發點：模型輸出多段 JSON 或格式錯誤 / 處理：SKILL.md 要求最後一段 fenced JSON block，evaluator 只取最後一段）
 
-1. **Externalized factors**: All emission factors live in `scripts/emission_factors.json`, separate from calculation logic. Staff can perturbation-test by modifying factors.
-2. **No hardcoded answers**: The SKILL.md explicitly instructs the LLM to call `scripts/calculate.py` for all calculations — never compute manually.
-3. **Perturbation resistance**: Changing input numbers (e.g., 1200→850 kWh, diesel 500→350 L) changes outputs proportionally. Hardcoded answer patterns would fail.
-4. **AR version switching**: AR5 vs AR6 produces different GWP values; a hardcoded response cannot handle both.
+## 6. 互動對象
 
-## Model-Agnostic Strategy
+本 skill 為獨立計算工具，不與其他 skill 互動。評分環境中，staff 會以 `hermes chat --toolsets skills -q` 呼叫本 skill，傳入包含 `task_id` 與 `input` 的 JSON，取得包含 `task_id`（原樣回傳）與計算結果的 JSON。
 
-| Component | LLM Responsibility | Risk on Model Change |
-|-----------|-------------------|---------------------|
-| Category classification | Identify emission type from keywords | Low: keyword fallback rules provided |
-| Number extraction | Pull numeric values from text | Very low: basic NER |
-| Unit recognition | Convert 度→kWh, 公升→L, 立方公尺→m³ | Low: explicit mapping in SKILL.md |
-| **Calculation** | **None** → scripts/calculate.py | **Zero risk** |
-| JSON formatting | Follow output schema | Low: constrained by schema |
+不使用 subagent。所有計算邏輯在 `scripts/calculate.py` 中完成，LLM 僅負責分類、提取、格式化。
 
-The skill is designed so that even if the LLM's classification accuracy drops on a different model, the keyword fallback rules ensure basic functionality. Calculation accuracy is guaranteed regardless of model because it's deterministic Python code.
+## 7. Token Budget 估算
 
-## Failure Modes & Mitigations
+| Scenario | 預估 input tokens | 預估 output tokens | 預估 total |
+|---|---:|---:|---:|
+| Scenario 1（辦公室綜合）| ~800 | ~400 | ~1,200 |
+| Scenario 2（多燃料）| ~600 | ~350 | ~950 |
+| Scenario 3（多冷媒）| ~700 | ~450 | ~1,150 |
 
-| Failure Mode | Impact | Mitigation |
-|--------------|--------|-----------|
-| LLM misclassifies category | Wrong calculation called | Keyword fallback rules; confidence lowered |
-| Number extraction error (multiple numbers) | Wrong parameters | LLM instructed to identify each number's referent; confidence lowered |
-| Unknown fuel type / refrigerant | Calculation fails | calculate.py returns error with available types; LLM suggests alternatives |
-| AR version ambiguity | Different GWP values | Default to AR5 (Taiwan standard); note in rationale |
-| JSON schema violation | Evaluator can't parse | SKILL.md provides explicit schema; single fenced JSON block rule |
-| Model generates calculation manually | Bypasses deterministic shell | SKILL.md explicitly prohibits manual calculation; evaluator catches discrepancies |
-
-## Improvement Directions
-
-1. **More emission categories**: Add Scope 3 (transportation, waste, purchased goods), stationary combustion details
-2. **Multi-region support**: Expand beyond Taiwan (JP, US, EU electricity factors)
-3. **Unit conversion**: Handle 年用電→月用電, 噸→公斤, etc.
-4. **Historical factors**: Support year-over-year emission factor changes
-5. **Report generation**: Output ISO 14064-compliant emission summary
-6. **Confidence calibration**: Track LLM accuracy across models to improve confidence scoring
+所有 scenario 遠低於 50k tokens 限制。計算由 deterministic script 執行，LLM 不需長推理鏈。

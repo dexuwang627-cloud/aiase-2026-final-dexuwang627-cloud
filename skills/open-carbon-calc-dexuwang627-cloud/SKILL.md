@@ -176,3 +176,25 @@ python3 scripts/calculate.py list
 - Output must be a single fenced JSON block
 - task_id must pass through from input
 - confidence must be 0.0–1.0
+
+## When to Use
+
+Use this skill when the input describes organizational activities involving energy consumption, fuel usage, refrigerant leakage, or transportation — any scenario requiring carbon emission calculation. The input should contain numeric quantities (kWh, liters, kg, km) and emission-related keywords (用電, 燃料, 冷媒, 車輛, 排放, 碳). Do not use this skill for unrelated calculations or non-emission queries.
+
+## Procedure
+
+1. **Classify**: Identify the emission category from keywords (用電/度 → electricity, 柴油/天然氣/煤 → fuel, 冷媒/R410A/R32 → refrigerant, 車/公里 → vehicle).
+2. **Extract**: Pull numeric values and units from the input. Convert units as needed (度→kWh, 公升→L, 立方公尺→m³).
+3. **Validate**: Check that extracted values are reasonable (positive numbers, known fuel/refrigerant types).
+4. **Calculate**: Call `scripts/calculate.py` with the appropriate command and parameters. For multi-source inputs, use the `combined` command.
+5. **Aggregate**: If multiple emission sources are present, combine them using `calc_combined`.
+6. **Verify**: Compare calculated values against expected ranges. If a value seems unreasonable, re-verify via calculate.py.
+7. **Format**: Output a single fenced JSON block with task_id, category, breakdown, scope1_kg_co2e, scope2_kg_co2e, total_kg_co2e, confidence, and rationale.
+
+## Verification
+
+After generating output, verify correctness by:
+- Running `scripts/evaluator.py '<output_json>' <scenario_number>` to compare against ground truth.
+- Checking that all numeric values match calculate.py results within ±5% tolerance.
+- Ensuring GWP values match authoritative IPCC constants exactly (no tolerance).
+- Confirming the output JSON contains all required fields: task_id, category, breakdown (or emission_breakdown), scope1_kg_co2e, scope2_kg_co2e, total_kg_co2e, confidence.

@@ -1,3 +1,2 @@
 # Carbon Emission Calculator — Python Dependencies
 # No external dependencies required; uses Python standard library only.
-# radon is listed for S-LOC checking (pairwise track requirement at repo level)

@@ -133,3 +133,24 @@ def find_max(lst: list[int]) -> int:
 - If the task is ambiguous, make reasonable assumptions and document them in a brief comment
 - task_id must pass through from input (if provided)
 - Confidence must be 0.0–1.0
+
+## When to Use
+
+Use this skill when the input is a programming task description asking for Python code generation. The task should specify a function or algorithm to implement. Do not use this skill for code review, debugging, or non-Python tasks.
+
+## Procedure
+
+1. Read the task description and identify the required function signature, input types, output type, and constraints.
+2. Choose the simplest correct algorithm — prefer standard library, built-in data structures, and iterative solutions over recursion.
+3. Write clean Python code with type hints, docstrings for complex functions, and edge case guards (None, empty, extreme values).
+4. Run `scripts/check.py` on the generated code to verify syntax, no forbidden imports/calls, and S-LOC ≤ 500.
+5. Output a single fenced JSON block with `task_id`, `code` (the Python source), and `confidence`.
+
+## Verification
+
+After generating code, run `scripts/check.py <file>` to confirm:
+- Syntax is valid Python (ast.parse succeeds).
+- No forbidden imports (subprocess, socket, requests, urllib, http, ftplib, smtplib) or calls (eval, exec, __import__).
+- S-LOC is within the 500-line limit.
+
+If validation fails, revise the code and re-validate before outputting.

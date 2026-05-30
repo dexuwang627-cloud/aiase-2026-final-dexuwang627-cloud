@@ -140,3 +140,25 @@ Lower confidence when: ambiguous column names across tables, question uses terms
 | Schema is empty or malformed | Return confidence 0.0, rationale noting schema issue |
 | Generated SQL fails validate.py | Revise SQL and re-validate; if still failing after 2 attempts, return the best attempt with reduced confidence |
 | Ambiguous question (multiple valid interpretations) | Pick the most likely interpretation, document alternatives in rationale, lower confidence |
+
+## When to Use
+
+Use this skill when the input contains a natural-language question about data and a SQLite database schema (DDL). The question should ask about data retrieval, aggregation, or filtering — any task that maps to a SELECT query. Do not use this skill for data modification, schema creation, or tasks that do not involve SQL.
+
+## Procedure
+
+1. Parse the `db_schema` field to identify tables, columns, primary keys, and foreign key relationships.
+2. Analyze the `question` to determine the query intent: lookup, aggregation, comparison, ranking, or join.
+3. Map question terms to schema elements (table names, column names, relationships).
+4. Generate a read-only SQLite SELECT or WITH statement that answers the question.
+5. Validate the generated SQL using `scripts/validate.py` to ensure it is read-only and syntactically sound.
+6. Output a single fenced JSON block with `task_id`, `sql`, `rationale`, and `confidence`.
+
+## Verification
+
+After generating SQL, run `scripts/validate.py` to confirm:
+- The SQL starts with SELECT or WITH (no DDL/DML).
+- No forbidden keywords (INSERT, UPDATE, DELETE, DROP, etc.) appear anywhere in the SQL.
+- The SQL is a single statement (no semicolons separating multiple queries).
+
+If validation fails, revise the SQL and re-validate before outputting.

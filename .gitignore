@@ -1,9 +1,24 @@
 __pycache__/
 *.pyc
-.venv/
-node_modules/
-.env
+*.pyo
+.pytest_cache/
 .DS_Store
+.venv/
+venv/
+.env
+.hermes/
 *.egg-info/
 dist/
 build/
+
+# Local runs
+dev_run_results/
+verify_report.json
+
+# Generated dev set sqlite files — students rebuild via dev_set/basic/build_dbs.py
+dev_set/basic/dbs/*.sqlite
+dev_set/basic/dbs/
+*.pyc
+__pycache__/
+dev_run_results/
+verify_report.json
