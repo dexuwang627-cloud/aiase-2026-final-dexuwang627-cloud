@@ -85,11 +85,11 @@ When generating code, assess confidence based on:
 ## Checking Code Quality
 
 ```bash
-# Validate code via stdin
-echo '<code>' | python3 scripts/check.py
-
-# Or via file
+# Validate code from a file
 python3 scripts/check.py solution.py
+
+# Or validate directly by providing code as a string argument
+# (the checker reads from a file path or stdin)
 ```
 
 The checker validates:
