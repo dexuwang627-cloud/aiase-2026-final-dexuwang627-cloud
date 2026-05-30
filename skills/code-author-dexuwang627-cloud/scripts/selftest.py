@@ -14,9 +14,9 @@ Usage:
     }'
 
 Prints a single fenced JSON block:
-    {"passed": int, "failed": int, "errors": [str],
+    {"task_id": str, "passed": int, "failed": int, "errors": [str],
      "sloc": int, "loc_violation": bool,
-     "import_violations": [str]}
+     "import_violations": [str], "call_violations": [str]}
 
 Deterministic. No LLM, no network. Uses `radon raw` for SLOC.
 """
@@ -72,6 +72,9 @@ def compute_sloc(code: str) -> int:
             pass
 
 
+FORBIDDEN_CALLS = {'eval', 'exec', '__import__'}
+
+
 def find_import_violations(code: str, forbidden: list[str]) -> list[str]:
     """以 AST 找 import,比對禁用清單。"""
     if not forbidden:
@@ -93,6 +96,20 @@ def find_import_violations(code: str, forbidden: list[str]) -> list[str]:
                 root = node.module.split(".")[0]
                 if root in forbidden_set:
                     found.append(node.module)
+    return sorted(set(found))
+
+
+def find_call_violations(code: str) -> list[str]:
+    """以 AST 找禁用呼叫 (eval, exec, __import__)。"""
+    found: list[str] = []
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return ["<syntax error — cannot static-check calls>"]
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if node.func.id in FORBIDDEN_CALLS:
+                found.append(f"Forbidden call: {node.func.id}()")
     return sorted(set(found))
 
 
@@ -118,13 +135,15 @@ def run_sample(code: str, entry: str, sample: dict) -> tuple[bool, str]:
 
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
-        return _emit({"passed": 0, "failed": 0, "errors": ["usage: selftest.py '<json>'"],
-                      "sloc": 0, "loc_violation": False, "import_violations": []})
+        return _emit({"task_id": "", "passed": 0, "failed": 0, "errors": ["usage: selftest.py '<json>'"],
+                      "sloc": 0, "loc_violation": False, "import_violations": [], "call_violations": []})
     try:
         payload = json.loads(argv[1])
     except json.JSONDecodeError as e:
-        return _emit({"passed": 0, "failed": 0, "errors": [f"argv JSON invalid: {e}"],
-                      "sloc": 0, "loc_violation": False, "import_violations": []})
+        return _emit({"task_id": "", "passed": 0, "failed": 0, "errors": [f"argv JSON invalid: {e}"],
+                      "sloc": 0, "loc_violation": False, "import_violations": [], "call_violations": []})
+
+    task_id = str(payload.get("task_id", ""))
 
     code = str(payload.get("code", ""))
     constraints = payload.get("constraints", {}) or {}
@@ -134,6 +153,7 @@ def main(argv: list[str]) -> int:
     max_loc = int(constraints.get("max_loc", 500))
     loc_violation = sloc > max_loc
     import_violations = find_import_violations(code, constraints.get("imports_forbidden", []))
+    call_violations = find_call_violations(code)
 
     entry = str(constraints.get("entry_function", ""))
     passed = 0
@@ -151,12 +171,14 @@ def main(argv: list[str]) -> int:
         errors.append("constraints.entry_function not provided")
 
     return _emit({
+        "task_id": task_id,
         "passed": passed,
         "failed": failed,
         "errors": errors,
         "sloc": sloc,
         "loc_violation": loc_violation,
         "import_violations": import_violations,
+        "call_violations": call_violations,
     })
 
 

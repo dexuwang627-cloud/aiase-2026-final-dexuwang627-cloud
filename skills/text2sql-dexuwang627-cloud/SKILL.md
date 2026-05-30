@@ -136,6 +136,94 @@ Lower confidence when: ambiguous column names across tables, question uses terms
 }
 ```
 
+### Example 4: LEFT JOIN with Zero Count
+
+**Input:**
+```json
+{
+  "task_id": "dev_004",
+  "question": "List all departments and the number of employees in each, including departments with no employees",
+  "db_schema": "CREATE TABLE departments (id INTEGER PRIMARY KEY, name TEXT); CREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT, department_id INTEGER, salary REAL);",
+  "dialect": "sqlite"
+}
+```
+
+**Output:**
+```json
+{
+  "task_id": "dev_004",
+  "sql": "SELECT d.name, COUNT(e.id) AS employee_count FROM departments d LEFT JOIN employees e ON d.id = e.department_id GROUP BY d.id, d.name",
+  "rationale": "LEFT JOIN ensures departments with zero employees appear. COUNT(e.id) counts non-null employee IDs, giving 0 for departments with no employees.",
+  "confidence": 0.80
+}
+```
+
+### Example 5: NOT EXISTS Correlated Subquery
+
+**Input:**
+```json
+{
+  "task_id": "dev_005",
+  "question": "Find students who are not enrolled in any course",
+  "db_schema": "CREATE TABLE Students (sid INTEGER PRIMARY KEY, name TEXT, dept TEXT); CREATE TABLE Enrollments (sid INTEGER, cid INTEGER, grade INTEGER, PRIMARY KEY(sid, cid));",
+  "dialect": "sqlite"
+}
+```
+
+**Output:**
+```json
+{
+  "task_id": "dev_005",
+  "sql": "SELECT s.name FROM Students s WHERE NOT EXISTS (SELECT 1 FROM Enrollments e WHERE e.sid = s.sid)",
+  "rationale": "NOT EXISTS checks each student against Enrollments. Students with no matching enrollment row are returned. More intuitive than LEFT JOIN + IS NULL for exclusion queries.",
+  "confidence": 0.75
+}
+```
+
+### Example 6: UNION
+
+**Input:**
+```json
+{
+  "task_id": "dev_006",
+  "question": "List the names of both professors and students in alphabetical order",
+  "db_schema": "CREATE TABLE Students (sid INTEGER PRIMARY KEY, name TEXT, dept TEXT); CREATE TABLE Courses (cid INTEGER PRIMARY KEY, title TEXT, professor TEXT, year INTEGER);",
+  "dialect": "sqlite"
+}
+```
+
+**Output:**
+```json
+{
+  "task_id": "dev_006",
+  "sql": "SELECT name FROM Students UNION SELECT professor AS name FROM Courses ORDER BY name",
+  "rationale": "UNION combines distinct names from both tables. ORDER BY applies to the entire result.",
+  "confidence": 0.80
+}
+```
+
+### Example 7: Nested Subquery with HAVING
+
+**Input:**
+```json
+{
+  "task_id": "dev_007",
+  "question": "Find departments where the average salary is higher than the overall average salary",
+  "db_schema": "CREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT, department TEXT, salary REAL);",
+  "dialect": "sqlite"
+}
+```
+
+**Output:**
+```json
+{
+  "task_id": "dev_007",
+  "sql": "SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department HAVING AVG(salary) > (SELECT AVG(salary) FROM employees)",
+  "rationale": "GROUP BY department with HAVING filters groups where average exceeds the overall average computed by the subquery.",
+  "confidence": 0.70
+}
+```
+
 ## Error Handling
 
 | Condition | Action |

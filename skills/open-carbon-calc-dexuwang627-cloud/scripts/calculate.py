@@ -23,6 +23,8 @@ def load_factors() -> dict:
 
 def calc_electricity(kwh: float, region: str = "TW", year: str = "2024") -> dict:
     """Scope 2: Calculate electricity emission."""
+    if kwh < 0:
+        return {"error": "kwh must be non-negative", "valid": False}
     factors = load_factors()
     region_data = factors["electricity"].get(region)
     if region_data is None:
@@ -46,6 +48,8 @@ def calc_electricity(kwh: float, region: str = "TW", year: str = "2024") -> dict
 
 def calc_fuel(fuel_type: str, amount: float) -> dict:
     """Scope 1: Calculate fuel combustion emission."""
+    if amount < 0:
+        return {"error": "amount must be non-negative", "valid": False}
     factors = load_factors()
     fuel = factors["fuel"].get(fuel_type)
     if fuel is None:
@@ -85,6 +89,8 @@ def calc_fuel(fuel_type: str, amount: float) -> dict:
 
 def calc_refrigerant(refrigerant: str, leakage_kg: float, ar_version: str = "ar5") -> dict:
     """Scope 1: Calculate refrigerant leakage emission."""
+    if leakage_kg < 0:
+        return {"error": "leakage_kg must be non-negative", "valid": False}
     factors = load_factors()
     ref = factors["refrigerant"].get(refrigerant)
     if ref is None:
@@ -109,6 +115,8 @@ def calc_refrigerant(refrigerant: str, leakage_kg: float, ar_version: str = "ar5
 
 def calc_vehicle(vehicle_type: str, distance_km: float) -> dict:
     """Scope 1/3: Calculate transportation emission."""
+    if distance_km < 0:
+        return {"error": "distance_km must be non-negative", "valid": False}
     factors = load_factors()
     v = factors["vehicle"].get(vehicle_type)
     if v is None:
@@ -133,6 +141,8 @@ def calc_combined(items: list) -> dict:
     items: list of dicts, each with 'type' and type-specific fields.
     Supported types: electricity, fuel, refrigerant, vehicle
     """
+    if not items:
+        return {"error": "No items provided", "valid": False}
     factors = load_factors()
     results = []
     for item in items:

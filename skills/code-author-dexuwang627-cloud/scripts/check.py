@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-FORBIDDEN_IMPORTS = ['subprocess', 'socket', 'requests', 'urllib', 'http', 'ftplib', 'smtplib']
+FORBIDDEN_IMPORTS = ['subprocess', 'socket', 'requests', 'urllib', 'http', 'ftplib', 'smtplib', 'importlib']
 FORBIDDEN_CALLS = ['eval', 'exec', '__import__']
 
 
