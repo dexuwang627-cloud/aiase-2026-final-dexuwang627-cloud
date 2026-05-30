@@ -51,15 +51,14 @@ def calc_fuel(fuel_type: str, amount: float) -> dict:
     if fuel is None:
         available = list(factors["fuel"].keys())
         return {"error": f"Unknown fuel type: {fuel_type}. Available: {available}", "valid": False}
-    # Map fuel type to its per-unit factor key
-    factor_key_map = {
-        "diesel": "co2_kg_per_liter",
-        "natural_gas": "co2_kg_per_m3",
-        "lpg": "co2_kg_per_kg",
-        "coal": "co2_kg_per_kg"
-    }
-    factor_key = factor_key_map[fuel_type]
-    emission_factor = fuel[factor_key]
+    # Find the per-unit emission factor from JSON (key starts with "co2_kg_per_")
+    emission_factor = None
+    for key, value in fuel.items():
+        if key.startswith("co2_kg_per_") and key != "co2_factor_kg_per_tj":
+            emission_factor = value
+            break
+    if emission_factor is None:
+        return {"error": f"No per-unit emission factor found for {fuel_type}", "valid": False}
     kg_co2e = amount * emission_factor
     return {
         "scope": 1,
@@ -154,10 +153,14 @@ def calc_combined(items: list) -> dict:
             r = {"error": f"Unknown calculation type: {calc_type}", "valid": False}
         results.append(r)
 
-    # Sum by scope
-    valid_results = [r for r in results if "kg_co2e" in r]
-    scope1 = sum(r["kg_co2e"] for r in valid_results if r.get("scope") == 1)
-    scope2 = sum(r["kg_co2e"] for r in valid_results if r.get("scope") == 2)
+    # Sum by scope — if any item has an error, propagate it
+    errors = [r for r in results if "error" in r and r.get("valid") is False]
+    if errors:
+        error_msgs = [r["error"] for r in errors]
+        return {"error": f"Calculation errors: {'; '.join(error_msgs)}", "valid": False, "breakdown": results}
+
+    scope1 = sum(r["kg_co2e"] for r in results if r.get("scope") == 1)
+    scope2 = sum(r["kg_co2e"] for r in results if r.get("scope") == 2)
     total = scope1 + scope2
 
     return {

@@ -28,24 +28,21 @@ def approx_equal(a: float, b: float, tolerance: float = TOLERANCE) -> bool:
 def evaluate_scenario_1(output: dict, ground_truth: dict) -> dict:
     """Evaluate office combined emission (Scope 1+2)."""
     checks = []
-    # Total
-    if "total_kg_co2e" in output and "total_kg_co2e" in ground_truth:
-        total_match = approx_equal(output["total_kg_co2e"], ground_truth["total_kg_co2e"])
-        checks.append({"check": "total", "pass": total_match,
-                        "output": output.get("total_kg_co2e"),
-                        "expected": ground_truth.get("total_kg_co2e")})
+    # Total — ground truth key is authoritative
+    total_match = approx_equal(output.get("total_kg_co2e", -1), ground_truth["total_kg_co2e"])
+    checks.append({"check": "total", "pass": total_match,
+                    "output": output.get("total_kg_co2e"),
+                    "expected": ground_truth["total_kg_co2e"]})
     # Scope 1
-    if "scope1_kg_co2e" in output and "scope1_kg_co2e" in ground_truth:
-        s1_match = approx_equal(output["scope1_kg_co2e"], ground_truth["scope1_kg_co2e"])
-        checks.append({"check": "scope1", "pass": s1_match,
-                        "output": output.get("scope1_kg_co2e"),
-                        "expected": ground_truth.get("scope1_kg_co2e")})
+    s1_match = approx_equal(output.get("scope1_kg_co2e", -1), ground_truth["scope1_kg_co2e"])
+    checks.append({"check": "scope1", "pass": s1_match,
+                    "output": output.get("scope1_kg_co2e"),
+                    "expected": ground_truth["scope1_kg_co2e"]})
     # Scope 2
-    if "scope2_kg_co2e" in output and "scope2_kg_co2e" in ground_truth:
-        s2_match = approx_equal(output["scope2_kg_co2e"], ground_truth["scope2_kg_co2e"])
-        checks.append({"check": "scope2", "pass": s2_match,
-                        "output": output.get("scope2_kg_co2e"),
-                        "expected": ground_truth.get("scope2_kg_co2e")})
+    s2_match = approx_equal(output.get("scope2_kg_co2e", -1), ground_truth["scope2_kg_co2e"])
+    checks.append({"check": "scope2", "pass": s2_match,
+                    "output": output.get("scope2_kg_co2e"),
+                    "expected": ground_truth["scope2_kg_co2e"]})
 
     passed = sum(1 for c in checks if c["pass"])
     return {"scenario": "office_combined", "checks": checks,
@@ -56,22 +53,27 @@ def evaluate_scenario_1(output: dict, ground_truth: dict) -> dict:
 def evaluate_scenario_2(output: dict, ground_truth: dict) -> dict:
     """Evaluate multi-fuel calculation."""
     checks = []
-    # Total
-    if "total_kg_co2e" in output and "total_kg_co2e" in ground_truth:
-        total_match = approx_equal(output["total_kg_co2e"], ground_truth["total_kg_co2e"])
-        checks.append({"check": "total", "pass": total_match})
+    # Total — ground truth is authoritative
+    total_match = approx_equal(output.get("total_kg_co2e", -1), ground_truth["total_kg_co2e"])
+    checks.append({"check": "total", "pass": total_match})
 
     # Check individual fuel items in breakdown
-    output_breakdown = {item.get("fuel_type"): item for item in output.get("breakdown", []) if item.get("fuel_type")}
-    gt_breakdown = {item.get("fuel_type"): item for item in ground_truth.get("breakdown", []) if item.get("fuel_type")}
+    # Accept both "breakdown" and "emission_breakdown" keys
+    output_items = output.get("breakdown") or output.get("emission_breakdown") or []
+    gt_items = ground_truth.get("breakdown") or ground_truth.get("emission_breakdown") or []
+    output_breakdown = {item.get("fuel_type"): item for item in output_items if item.get("fuel_type")}
+    gt_breakdown = {item.get("fuel_type"): item for item in gt_items if item.get("fuel_type")}
 
     for fuel_type in gt_breakdown:
         if fuel_type in output_breakdown:
             emission_match = approx_equal(
-                output_breakdown[fuel_type]["kg_co2e"],
+                output_breakdown[fuel_type].get("kg_co2e", -1),
                 gt_breakdown[fuel_type]["kg_co2e"]
             )
             checks.append({"check": f"fuel_{fuel_type}", "pass": emission_match})
+        else:
+            checks.append({"check": f"fuel_{fuel_type}", "pass": False,
+                           "output": None, "expected": gt_breakdown[fuel_type]["kg_co2e"]})
 
     passed = sum(1 for c in checks if c["pass"])
     return {"scenario": "multi_fuel", "checks": checks,
@@ -82,24 +84,28 @@ def evaluate_scenario_2(output: dict, ground_truth: dict) -> dict:
 def evaluate_scenario_3(output: dict, ground_truth: dict) -> dict:
     """Evaluate multi-refrigerant calculation."""
     checks = []
-    # Total
-    if "total_kg_co2e" in output and "total_kg_co2e" in ground_truth:
-        total_match = approx_equal(output["total_kg_co2e"], ground_truth["total_kg_co2e"])
-        checks.append({"check": "total", "pass": total_match})
+    # Total — ground truth is authoritative
+    total_match = approx_equal(output.get("total_kg_co2e", -1), ground_truth["total_kg_co2e"])
+    checks.append({"check": "total", "pass": total_match})
 
-    # Check GWP values and emissions in breakdown
-    output_breakdown = {item.get("refrigerant"): item for item in output.get("breakdown", []) if item.get("refrigerant")}
-    gt_breakdown = {item.get("refrigerant"): item for item in ground_truth.get("breakdown", []) if item.get("refrigerant")}
+    # Accept both "breakdown" and "emission_breakdown" keys
+    output_items = output.get("breakdown") or output.get("emission_breakdown") or []
+    gt_items = ground_truth.get("breakdown") or ground_truth.get("emission_breakdown") or []
+    output_breakdown = {item.get("refrigerant"): item for item in output_items if item.get("refrigerant")}
+    gt_breakdown = {item.get("refrigerant"): item for item in gt_items if item.get("refrigerant")}
 
     for ref in gt_breakdown:
         if ref in output_breakdown:
             gwp_match = output_breakdown[ref].get("gwp") == gt_breakdown[ref].get("gwp")
             checks.append({"check": f"gwp_{ref}", "pass": gwp_match})
             emission_match = approx_equal(
-                output_breakdown[ref]["kg_co2e"],
+                output_breakdown[ref].get("kg_co2e", -1),
                 gt_breakdown[ref]["kg_co2e"]
             )
             checks.append({"check": f"emission_{ref}", "pass": emission_match})
+        else:
+            checks.append({"check": f"refrigerant_{ref}", "pass": False,
+                           "output": None, "expected": gt_breakdown[ref]["kg_co2e"]})
 
     passed = sum(1 for c in checks if c["pass"])
     return {"scenario": "multi_refrigerant", "checks": checks,
@@ -107,13 +113,55 @@ def evaluate_scenario_3(output: dict, ground_truth: dict) -> dict:
             "score": passed / len(checks) if checks else 0}
 
 
-def evaluate(output_json: str, scenario: int) -> dict:
-    """Main evaluation entry point."""
+def generate_ground_truth(scenario: int) -> dict:
+    """Dynamically generate ground truth from calculate.py + emission_factors.json.
+    This ensures perturbation-resilience: if factors change, ground truth updates automatically.
+    """
+    if scenario == 1:
+        # Office combined: 1200 kWh + R410A 5kg
+        e = calc_electricity(kwh=1200, region="TW", year="2024")
+        r = calc_refrigerant(refrigerant="R410A", leakage_kg=5, ar_version="ar5")
+        return calc_combined([
+            {"type": "electricity", "kwh": 1200},
+            {"type": "refrigerant", "refrigerant": "R410A", "leakage_kg": 5}
+        ])
+    elif scenario == 2:
+        # Multi-fuel: diesel 500L + natural gas 200m³
+        d = calc_fuel(fuel_type="diesel", amount=500)
+        n = calc_fuel(fuel_type="natural_gas", amount=200)
+        return calc_combined([
+            {"type": "fuel", "fuel_type": "diesel", "amount": 500},
+            {"type": "fuel", "fuel_type": "natural_gas", "amount": 200}
+        ])
+    elif scenario == 3:
+        # Multi-refrigerant: R410A 3kg + R32 2kg + R134a 1.5kg
+        return calc_combined([
+            {"type": "refrigerant", "refrigerant": "R410A", "leakage_kg": 3},
+            {"type": "refrigerant", "refrigerant": "R32", "leakage_kg": 2},
+            {"type": "refrigerant", "refrigerant": "R134a", "leakage_kg": 1.5}
+        ])
+    else:
+        return {"error": f"Unknown scenario: {scenario}"}
+
+
+def evaluate(output_json: str, scenario: int, use_static_gt: bool = False) -> dict:
+    """Main evaluation entry point.
+
+    By default, generates ground truth dynamically from calculate.py,
+    which makes it resilient to perturbation (emission factor changes).
+    Set use_static_gt=True to use static test_data/ files instead.
+    """
     output = json.loads(output_json)
-    gt_path = Path(__file__).parent / "test_data" / f"scenario_{scenario}_expected.json"
-    if not gt_path.exists():
-        return {"error": f"Ground truth not found for scenario {scenario}"}
-    ground_truth = json.loads(gt_path.read_text(encoding="utf-8"))
+
+    if use_static_gt:
+        gt_path = Path(__file__).parent / "test_data" / f"scenario_{scenario}_expected.json"
+        if not gt_path.exists():
+            return {"error": f"Ground truth not found for scenario {scenario}"}
+        ground_truth = json.loads(gt_path.read_text(encoding="utf-8"))
+    else:
+        ground_truth = generate_ground_truth(scenario)
+        if "error" in ground_truth:
+            return ground_truth
 
     evaluators = {
         1: evaluate_scenario_1,

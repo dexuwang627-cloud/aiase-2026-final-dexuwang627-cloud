@@ -22,12 +22,12 @@ def validate_sql(sql: str) -> dict:
     if not (sql_upper.startswith('SELECT') or sql_upper.startswith('WITH')):
         errors.append("SQL must be a SELECT or WITH statement (read-only)")
 
-    # Check for forbidden keywords
+    # Check for forbidden keywords across the ENTIRE SQL (not just after the starting keyword)
     for kw in FORBIDDEN_KEYWORDS:
-        # Word boundary check
+        # Word boundary check on full SQL text
         pattern = r'\b' + kw + r'\b'
         if re.search(pattern, sql_upper):
-            # Allow SELECT ... FROM ... (no false positive on column names)
+            # Allow SELECT (it's the main read-only keyword)
             if kw == 'SELECT':
                 continue
             errors.append(f"Forbidden keyword: {kw}")
