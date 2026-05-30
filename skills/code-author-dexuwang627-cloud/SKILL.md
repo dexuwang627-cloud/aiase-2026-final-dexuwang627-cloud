@@ -162,6 +162,63 @@ The checker validates:
 }
 ```
 
+### Example 3: Dictionary / String Manipulation
+**Input**:
+```json
+{
+  "task_id": "pair_003",
+  "task_description": "Write a function word_count(text: str) -> dict[str, int] that counts occurrences of each word. Words are separated by whitespace. Case-insensitive.",
+  "constraints": {"entry_function": "word_count", "max_loc": 500, "imports_forbidden": ["collections"]}
+}
+```
+
+**Output**:
+```json
+{
+  "task_id": "pair_003",
+  "code": "def word_count(text: str) -> dict[str, int]:\n    \"\"\"Count occurrences of each word, case-insensitive.\"\"\"\n    if not text or not text.strip():\n        return {}\n    counts: dict[str, int] = {}\n    for word in text.lower().split():\n        counts[word] = counts.get(word, 0) + 1\n    return counts",
+  "confidence": 0.90
+}
+```
+
+### Example 4: Sorting with Key Function
+**Input**:
+```json
+{
+  "task_id": "pair_004",
+  "task_description": "Write a function sort_by_length(strings: list[str]) -> list[str] that returns strings sorted by length ascending. Strings of equal length keep their original order.",
+  "constraints": {"entry_function": "sort_by_length", "max_loc": 500, "imports_forbidden": []}
+}
+```
+
+**Output**:
+```json
+{
+  "task_id": "pair_004",
+  "code": "def sort_by_length(strings: list[str]) -> list[str]:\n    \"\"\"Sort strings by length ascending; stable sort preserves original order for ties.\"\"\"\n    return sorted(strings, key=len)",
+  "confidence": 0.95
+}
+```
+
+### Example 5: Graph / BFS
+**Input**:
+```json
+{
+  "task_id": "pair_005",
+  "task_description": "Write a function shortest_path(graph: dict[str, list[str]], start: str, end: str) -> list[str] that returns the shortest path (as a list of nodes) from start to end using BFS. Return empty list if no path exists.",
+  "constraints": {"entry_function": "shortest_path", "max_loc": 500, "imports_forbidden": []}
+}
+```
+
+**Output**:
+```json
+{
+  "task_id": "pair_005",
+  "code": "def shortest_path(graph: dict[str, list[str]], start: str, end: str) -> list[str]:\n    \"\"\"BFS shortest path from start to end. Returns empty list if unreachable.\"\"\"\n    if start == end:\n        return [start]\n    if start not in graph:\n        return []\n    visited: set[str] = {start}\n    queue: list[tuple[str, list[str]]] = [(start, [start])]\n    while queue:\n        node, path = queue.pop(0)\n        for neighbor in graph.get(node, []):\n            if neighbor == end:\n                return path + [neighbor]\n            if neighbor not in visited:\n                visited.add(neighbor)\n                queue.append((neighbor, path + [neighbor]))\n    return []",
+  "confidence": 0.80
+}
+```
+
 ## Rules
 
 - Output must be a single fenced JSON block containing `task_id`, `code`, and `confidence`

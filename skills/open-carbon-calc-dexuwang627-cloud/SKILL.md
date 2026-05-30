@@ -100,6 +100,11 @@ python3 scripts/calculate.py combined '{"items": [{"type": "electricity", "kwh":
 
 # List available factors
 python3 scripts/calculate.py list
+
+# Unit conversion (度↔kWh, 公升↔L, 立方公尺↔m³, 公噸↔kg, etc.)
+python3 scripts/convert.py 度 1200
+python3 scripts/convert.py 公噸 2
+python3 scripts/convert.py --table
 ```
 
 ## Supported Emission Factors
@@ -184,7 +189,7 @@ Use this skill when the input describes organizational activities involving ener
 ## Procedure
 
 1. **Classify**: Identify the emission category from keywords (用電/度 → electricity, 柴油/天然氣/煤 → fuel, 冷媒/R410A/R32 → refrigerant, 車/公里 → vehicle).
-2. **Extract**: Pull numeric values and units from the input. Convert units as needed (度→kWh, 公升→L, 立方公尺→m³).
+2. **Extract**: Pull numeric values and units from the input. Convert units as needed using `scripts/convert.py` (度→kWh, 公升→L, 立方公尺→m³, 公噸→kg).
 3. **Validate**: Check that extracted values are reasonable (positive numbers, known fuel/refrigerant types).
 4. **Calculate**: Call `scripts/calculate.py` with the appropriate command and parameters. For multi-source inputs, use the `combined` command.
 5. **Aggregate**: If multiple emission sources are present, combine them using `calc_combined`.

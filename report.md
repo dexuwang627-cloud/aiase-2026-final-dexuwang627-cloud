@@ -78,9 +78,50 @@ Pairwise Track check.py: valid code passes all checks; forbidden code (subproces
 
 5. **Pairwise Track — Adaptive complexity**: Add a complexity assessment step that estimates S-LOC before generating code, allowing the LLM to choose simpler implementations for simple tasks.
 
-6. **Cross-cutting — Unit conversion**: Add `scripts/convert.py` for handling non-standard units (度↔kWh, 公升↔L, 立方公尺↔m³). Currently, the LLM must do unit conversion mentally, which risks errors.
+6. **Cross-cutting — Unit conversion**: Added `scripts/convert.py` for handling non-standard units (度↔kWh, 公升↔L, 立方公尺↔m³, 公噸↔kg). The LLM can now call this script to convert Taiwan-common units to SI equivalents deterministically, eliminating manual conversion errors.
 
 7. **Cross-cutting — Interaction log analysis**: After grading, analyze interaction logs to identify common LLM failure patterns and refine SKILL.md prompts accordingly.
+
+## Interaction Log Examples
+
+### Open Track — Scenario 1: Office Combined Emission
+
+**Input**: "我們辦公室每月用電 1200 度，冷氣使用 R410A 冷媒 5 公斤逸散"
+
+**Interaction log**:
+
+1. **Classify**: 度 → electricity (Scope 2), 冷媒/R410A → refrigerant_leakage (Scope 1)
+2. **Extract**: electricity kwh=1200, refrigerant R410A, leakage_kg=5
+3. **Validate**: Both numbers positive. R410A is a known refrigerant. Default AR version: AR5.
+4. **Calculate**:
+   - `python3 scripts/calculate.py electricity '{"kwh": 1200, "region": "TW", "year": "2024"}'` → 568.8 kg CO₂e
+   - `python3 scripts/calculate.py refrigerant '{"refrigerant": "R410A", "leakage_kg": 5, "ar_version": "ar5"}'` → 9620.0 kg CO₂e
+   - `python3 scripts/calculate.py combined '{"items": [{"type": "electricity", "kwh": 1200}, {"type": "refrigerant", "refrigerant": "R410A", "leakage_kg": 5}]}'` → total 10188.8 kg CO₂e
+5. **Verify**: 568.8 + 9620.0 = 10188.8 ✓
+6. **Format**: Single fenced JSON block with task_id, breakdown, scope1, scope2, total.
+
+### Basic Track — dev_001: Aggregation Query
+
+**Input**: "How many customers have placed more than 5 orders?"
+
+**Interaction log**:
+
+1. **Parse schema**: Identify customers and orders tables, foreign key customer_id.
+2. **Analyze intent**: Aggregation query — count customers filtered by order count.
+3. **Generate SQL**: `SELECT COUNT(*) FROM customers WHERE id IN (SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) > 5)`
+4. **Validate**: `python3 scripts/validate_sql.py '{"schema_ddl":"...", "sql":"SELECT COUNT(*) FROM ..."}'` → valid: true
+5. **Output**: JSON with task_id, sql, rationale, confidence.
+
+### Pairwise Track — pair_003: Word Count
+
+**Input**: "Write a function word_count(text: str) -> dict[str, int] that counts occurrences of each word."
+
+**Interaction log**:
+
+1. **Analyze**: Simple string manipulation, no imports needed, O(n) solution.
+2. **Implement**: `def word_count(text: str) -> dict[str, int]: ...` with empty string guard.
+3. **Check**: `python3 scripts/check.py solution.py` → valid: true, sloc: 7, sloc_within_limit: true, forbidden: clean
+4. **Output**: JSON with task_id, code, confidence.
 
 ## Citations
 

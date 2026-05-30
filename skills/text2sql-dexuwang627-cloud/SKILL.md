@@ -224,6 +224,94 @@ Lower confidence when: ambiguous column names across tables, question uses terms
 }
 ```
 
+### Example 8: CASE Expression
+
+**Input:**
+```json
+{
+  "task_id": "dev_008",
+  "question": "Classify each employee's salary as 'high' (>=80000), 'medium' (>=50000), or 'low' (<50000)",
+  "db_schema": "CREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT, department TEXT, salary REAL);",
+  "dialect": "sqlite"
+}
+```
+
+**Output:**
+```json
+{
+  "task_id": "dev_008",
+  "sql": "SELECT name, salary, CASE WHEN salary >= 80000 THEN 'high' WHEN salary >= 50000 THEN 'medium' ELSE 'low' END AS salary_level FROM employees",
+  "rationale": "CASE expression maps salary ranges to categorical labels. WHEN conditions are evaluated top-down; the first match wins.",
+  "confidence": 0.90
+}
+```
+
+### Example 9: CTE (WITH Clause)
+
+**Input:**
+```json
+{
+  "task_id": "dev_009",
+  "question": "Find the top 3 customers by total order amount, along with how many orders each placed",
+  "db_schema": "CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT); CREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER, total REAL, order_date TEXT);",
+  "dialect": "sqlite"
+}
+```
+
+**Output:**
+```json
+{
+  "task_id": "dev_009",
+  "sql": "WITH customer_totals AS (SELECT customer_id, SUM(total) AS total_amount, COUNT(*) AS order_count FROM orders GROUP BY customer_id) SELECT c.name, ct.total_amount, ct.order_count FROM customers c JOIN customer_totals ct ON c.id = ct.customer_id ORDER BY ct.total_amount DESC LIMIT 3",
+  "rationale": "CTE customer_totals pre-aggregates order data per customer. Main query joins to get names and sorts by total descending, limiting to top 3.",
+  "confidence": 0.85
+}
+```
+
+### Example 10: Window Function (ROW_NUMBER)
+
+**Input:**
+```json
+{
+  "task_id": "dev_010",
+  "question": "For each department, find the employee with the highest salary",
+  "db_schema": "CREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT, department TEXT, salary REAL);",
+  "dialect": "sqlite"
+}
+```
+
+**Output:**
+```json
+{
+  "task_id": "dev_010",
+  "sql": "SELECT name, department, salary FROM (SELECT name, department, salary, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS rn FROM employees) WHERE rn = 1",
+  "rationale": "ROW_NUMBER partitions by department and orders by salary descending within each partition. Filtering rn=1 returns the top earner per department. Equivalent to argmax per group.",
+  "confidence": 0.80
+}
+```
+
+### Example 11: COALESCE and NULL Handling
+
+**Input:**
+```json
+{
+  "task_id": "dev_011",
+  "question": "List all products with their price, treating NULL prices as 0",
+  "db_schema": "CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, price REAL, category TEXT);",
+  "dialect": "sqlite"
+}
+```
+
+**Output:**
+```json
+{
+  "task_id": "dev_011",
+  "sql": "SELECT name, COALESCE(price, 0) AS price FROM products",
+  "rationale": "COALESCE returns the first non-null argument. Replaces NULL prices with 0, avoiding NULL propagation in downstream calculations.",
+  "confidence": 0.95
+}
+```
+
 ## Error Handling
 
 | Condition | Action |
