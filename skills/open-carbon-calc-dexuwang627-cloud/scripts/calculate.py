@@ -51,12 +51,22 @@ def calc_fuel(fuel_type: str, amount: float) -> dict:
     if fuel is None:
         available = list(factors["fuel"].keys())
         return {"error": f"Unknown fuel type: {fuel_type}. Available: {available}", "valid": False}
-    # Find the per-unit emission factor from JSON (key starts with "co2_kg_per_")
-    emission_factor = None
-    for key, value in fuel.items():
-        if key.startswith("co2_kg_per_") and key != "co2_factor_kg_per_tj":
-            emission_factor = value
-            break
+    # Explicit mapping: fuel_type → per-unit emission factor key
+    # This is robust against JSON key order changes and new fuel additions
+    FACTOR_KEY_MAP = {
+        "diesel": "co2_kg_per_liter",
+        "natural_gas": "co2_kg_per_m3",
+        "lpg": "co2_kg_per_kg",
+        "coal": "co2_kg_per_kg",
+    }
+    factor_key = FACTOR_KEY_MAP.get(fuel_type)
+    emission_factor = fuel.get(factor_key) if factor_key else None
+    if emission_factor is None:
+        # Fallback: search for any key starting with co2_kg_per_ (excluding co2_factor_kg_per_tj)
+        for key, value in fuel.items():
+            if key.startswith("co2_kg_per_") and key != "co2_factor_kg_per_tj":
+                emission_factor = value
+                break
     if emission_factor is None:
         return {"error": f"No per-unit emission factor found for {fuel_type}", "valid": False}
     kg_co2e = amount * emission_factor

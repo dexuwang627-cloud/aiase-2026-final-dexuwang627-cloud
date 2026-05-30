@@ -34,7 +34,7 @@ def validate_sql(sql: str) -> dict:
 
     # Check for semicolons (multiple statements)
     if ';' in sql.rstrip(';'):
-        warnings.append("Multiple SQL statements detected")
+        errors.append("Multiple SQL statements detected")
 
     # Check for comments
     if '--' in sql or '/*' in sql:

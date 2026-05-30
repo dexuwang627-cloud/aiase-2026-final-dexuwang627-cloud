@@ -34,7 +34,7 @@ When the LLM's classification confidence is low, keyword-matching rules provide 
 
 ### Development Failures
 
-1. **Initial `calculate.py` emission_factor key bug**: The first draft used inconsistent key naming (`co2_kg_per_liter` vs `co2_kg_per_L`) causing KeyError at runtime. Fixed by introducing a `factor_key_map` dictionary that explicitly maps fuel types to their per-unit factor keys.
+1. **Initial `calculate.py` emission_factor key bug**: The first draft used inconsistent key naming (`co2_kg_per_liter` vs `co2_kg_per_L`) causing KeyError at runtime. Fixed by deriving the factor key from the fuel's `unit` field (e.g., `f"co2_kg_per_{unit}"`), making it robust against JSON key order changes and new fuel types.
 
 2. **Evaluator tolerance**: Initially set tolerance to exact match, but floating-point arithmetic (e.g., 5 × 1924 = 9620.0 vs 9620) caused false negatives. Changed to ±5% relative tolerance with exact match for GWP integers.
 

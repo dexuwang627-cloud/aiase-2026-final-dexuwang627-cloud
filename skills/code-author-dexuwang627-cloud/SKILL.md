@@ -12,19 +12,44 @@ Generate Python code that solves a given programming task description. The outpu
 
 ## Input
 
-Task description in natural language. Examples:
-- "Write a function that finds the longest palindrome substring in a given string."
-- "Implement a function to merge two sorted lists into one sorted list."
-- "Create a function that calculates the Nth Fibonacci number efficiently."
+JSON payload with the following structure:
+
+```json
+{
+  "task_id": "task_pair_001",
+  "task_description": "Write a function that merges overlapping intervals...",
+  "constraints": {
+    "entry_function": "merge_intervals",
+    "max_loc": 500,
+    "imports_forbidden": ["os", "sys", "subprocess"]
+  }
+}
+```
+
+Fields:
+- `task_id` (string, required): Must be passed through to output unchanged.
+- `task_description` (string, required): Natural language description of the programming task.
+- `constraints` (object, optional): Contains `entry_function` (function name), `max_loc` (S-LOC limit), and `imports_forbidden` (additional banned imports beyond the defaults).
 
 ## Output
 
-Python code that:
-- Is self-contained (no external dependencies beyond Python standard library)
-- Passes the hidden test cases
+A single fenced JSON block with this exact structure:
+
+```json
+{
+  "task_id": "task_pair_001",
+  "code": "def merge_intervals(intervals: list[list[int]]) -> list[list[int]]:\n    ...",
+  "confidence": 0.9
+}
+```
+
+The `code` field must contain self-contained Python code that:
+- Is compatible with Python 3.11
+- Has no external dependencies beyond Python standard library
 - Includes type hints
 - Handles edge cases (None, empty, extreme values)
-- Is ≤500 S-LOC (via radon raw)
+- Is ≤500 S-LOC (measured by radon raw)
+- Passes the test cases specified in the task
 
 ## Code Generation Strategy
 
@@ -100,39 +125,51 @@ The checker validates:
 ## Examples
 
 ### Example 1: Simple Function
-**Input**: "Write a function `add(a: int, b: int) -> int` that returns the sum of two integers."
+**Input**:
+```json
+{
+  "task_id": "pair_001",
+  "task_description": "Write a function add(a: int, b: int) -> int that returns the sum of two integers.",
+  "constraints": {"entry_function": "add", "max_loc": 500, "imports_forbidden": []}
+}
+```
 
 **Output**:
-```python
-def add(a: int, b: int) -> int:
-    """Return the sum of two integers."""
-    return a + b
+```json
+{
+  "task_id": "pair_001",
+  "code": "def add(a: int, b: int) -> int:\n    \"\"\"Return the sum of two integers.\"\"\"\n    return a + b",
+  "confidence": 0.95
+}
 ```
 
 ### Example 2: Edge Case Handling
-**Input**: "Write a function `find_max(lst: list[int]) -> int` that returns the maximum value in a list. Return -1 for empty lists."
+**Input**:
+```json
+{
+  "task_id": "pair_002",
+  "task_description": "Write a function find_max(lst: list[int]) -> int that returns the maximum value in a list. Return -1 for empty lists.",
+  "constraints": {"entry_function": "find_max", "max_loc": 500, "imports_forbidden": []}
+}
+```
 
 **Output**:
-```python
-def find_max(lst: list[int]) -> int:
-    """Return the maximum value in a list, or -1 if empty."""
-    if not lst:
-        return -1
-    max_val = lst[0]
-    for val in lst[1:]:
-        if val > max_val:
-            max_val = val
-    return max_val
+```json
+{
+  "task_id": "pair_002",
+  "code": "def find_max(lst: list[int]) -> int:\n    \"\"\"Return the maximum value in a list, or -1 if empty.\"\"\"\n    if not lst:\n        return -1\n    max_val = lst[0]\n    for val in lst[1:]:\n        if val > max_val:\n            max_val = val\n    return max_val",
+  "confidence": 0.9
+}
 ```
 
 ## Rules
 
-- Output only Python code — no markdown fences, no explanations
-- Code must be self-contained and runnable
+- Output must be a single fenced JSON block containing `task_id`, `code`, and `confidence`
+- `task_id` must pass through from input unchanged
+- `code` must be self-contained Python — no markdown fences around the code itself, no explanations
+- `confidence` must be 0.0–1.0
 - All calculations must be deterministic — no randomness unless the task requires it
-- If the task is ambiguous, make reasonable assumptions and document them in a brief comment
-- task_id must pass through from input (if provided)
-- Confidence must be 0.0–1.0
+- If the task is ambiguous, make reasonable assumptions and document them in a brief comment within the code
 
 ## When to Use
 

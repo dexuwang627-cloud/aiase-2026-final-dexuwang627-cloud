@@ -71,7 +71,11 @@ Convert a natural-language question and a SQLite database schema (DDL) into a ve
 2. **Parse question intent**: Classify the question as lookup (single row), aggregation (count/sum/avg), comparison, ranking, or join-based.
 3. **Map to schema**: Identify which tables and columns the question refers to. Resolve ambiguous column names by using table prefixes. Match natural-language terms to column names (e.g., "how many" → COUNT, "total sales" → SUM(total)).
 4. **Generate SQL**: Compose the query with proper JOINs, WHERE clauses, GROUP BY, HAVING, and ORDER BY as needed. Prefer explicit JOIN syntax over implicit comma-joins.
-5. **Validate**: Run `scripts/validate.py` on the generated SQL to check it is read-only and syntactically sound. If validation fails, revise and re-validate.
+5. **Validate**: Run `scripts/validate_sql.py` on the generated SQL to check it is read-only and syntactically sound. If validation fails, revise and re-validate.
+   ```bash
+   python3 scripts/validate_sql.py '{"schema_ddl":"CREATE TABLE ...", "sql":"SELECT ..."}'
+   ```
+   This validates both keyword restrictions AND schema compatibility (runs EXPLAIN against the provided DDL).
 
 ## Confidence Estimation
 
@@ -138,7 +142,7 @@ Lower confidence when: ambiguous column names across tables, question uses terms
 |-----------|--------|
 | Question cannot be mapped to any table/column | Return SQL as a comment-free placeholder SELECT NULL with confidence 0.0 and rationale explaining the mapping failure |
 | Schema is empty or malformed | Return confidence 0.0, rationale noting schema issue |
-| Generated SQL fails validate.py | Revise SQL and re-validate; if still failing after 2 attempts, return the best attempt with reduced confidence |
+| Generated SQL fails validate_sql.py | Revise SQL and re-validate; if still failing after 2 attempts, return the best attempt with reduced confidence |
 | Ambiguous question (multiple valid interpretations) | Pick the most likely interpretation, document alternatives in rationale, lower confidence |
 
 ## When to Use
@@ -151,12 +155,12 @@ Use this skill when the input contains a natural-language question about data an
 2. Analyze the `question` to determine the query intent: lookup, aggregation, comparison, ranking, or join.
 3. Map question terms to schema elements (table names, column names, relationships).
 4. Generate a read-only SQLite SELECT or WITH statement that answers the question.
-5. Validate the generated SQL using `scripts/validate.py` to ensure it is read-only and syntactically sound.
+5. Validate the generated SQL using `scripts/validate_sql.py` to ensure it is read-only, syntactically sound, and compatible with the provided schema.
 6. Output a single fenced JSON block with `task_id`, `sql`, `rationale`, and `confidence`.
 
 ## Verification
 
-After generating SQL, run `scripts/validate.py` to confirm:
+After generating SQL, run `scripts/validate_sql.py` to confirm:
 - The SQL starts with SELECT or WITH (no DDL/DML).
 - No forbidden keywords (INSERT, UPDATE, DELETE, DROP, etc.) appear anywhere in the SQL.
 - The SQL is a single statement (no semicolons separating multiple queries).
