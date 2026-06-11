@@ -1,0 +1,181 @@
+name: Autograding Tests
+
+on:
+  - push
+  - workflow_dispatch
+  - repository_dispatch
+
+permissions:
+  checks: write
+  actions: read
+  contents: read
+
+jobs:
+  run-autograding-tests:
+    runs-on: self-hosted
+    if: github.actor != 'github-classroom[bot]'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check skills directory
+        id: check-skills-dir
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Check skills directory
+          setup-command: ""
+          command: "test -d skills"
+          timeout: 10
+          max-score: 5
+
+      - name: Check required root files
+        id: check-root-files
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Check required root files
+          setup-command: ""
+          command: "test -f PAIRWISE_ROLE.md && test -f OPEN_TRACK.md && test -f report.md"
+          timeout: 10
+          max-score: 15
+
+      - name: Check dev files
+        id: check-dev-files
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Check dev files
+          setup-command: ""
+          command: "test -d dev_set && test -f run_dev.py"
+          timeout: 10
+          max-score: 10
+
+      - name: Check Basic Track skill format
+        id: check-basic-skill
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Check Basic Track skill format
+          setup-command: ""
+          command: |
+            dir="$(find skills -maxdepth 1 -type d -name 'text2sql-*' | head -n 1)" &&
+            test -n "$dir" &&
+            test -f "$dir/SKILL.md" &&
+            test -d "$dir/scripts" &&
+            test "$(head -n 1 "$dir/SKILL.md")" = "---" &&
+            test -n "$(awk 'NR > 1 && $0 == "---" { print NR; exit }' "$dir/SKILL.md")" &&
+            name="$(awk 'NR == 1 && $0 == "---" { in_fm = 1; next } in_fm && $0 == "---" { exit } in_fm && /^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); gsub(/^["'"'"']|["'"'"']$/, ""); print; exit }' "$dir/SKILL.md")" &&
+            test "$name" = "$(basename "$dir")" &&
+            awk 'NR == 1 && $0 == "---" { in_fm = 1; next } in_fm && $0 == "---" { exit } in_fm { print }' "$dir/SKILL.md" | grep -Eq '^description:[[:space:]]*.+' &&
+            awk 'NR == 1 && $0 == "---" { in_fm = 1; next } in_fm && $0 == "---" { exit } in_fm { print }' "$dir/SKILL.md" | grep -Eq '^version:[[:space:]]*.+' &&
+            grep -Fxq "## When to Use" "$dir/SKILL.md" &&
+            grep -Fxq "## Procedure" "$dir/SKILL.md" &&
+            grep -Fxq "## Verification" "$dir/SKILL.md"
+          timeout: 10
+          max-score: 15
+
+      - name: Check Pairwise role file format
+        id: check-pairwise-role
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Check Pairwise role file format
+          setup-command: ""
+          command: |
+            test -f PAIRWISE_ROLE.md &&
+            role="$(awk -F': *' '$1 == "role" { print $2; exit }' PAIRWISE_ROLE.md)" &&
+            skill_path="$(awk -F': *' '$1 == "skill_path" { print $2; exit }' PAIRWISE_ROLE.md)" &&
+            { test "$role" = "code-author" || test "$role" = "bug-hunter"; } &&
+            case "$skill_path" in skills/*/) true ;; *) false ;; esac &&
+            test -d "$skill_path" &&
+            if test "$role" = "code-author"; then case "$skill_path" in skills/code-author-*/) true ;; *) false ;; esac; fi &&
+            if test "$role" = "bug-hunter"; then case "$skill_path" in skills/bug-hunter-*/) true ;; *) false ;; esac; fi
+          timeout: 10
+          max-score: 15
+
+      - name: Check Pairwise skill format
+        id: check-pairwise-skill
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Check Pairwise skill format
+          setup-command: ""
+          command: |
+            skill_path="$(awk -F': *' '$1 == "skill_path" { print $2; exit }' PAIRWISE_ROLE.md)" &&
+            dir="${skill_path%/}" &&
+            test -n "$dir" &&
+            test -f "$dir/SKILL.md" &&
+            test -d "$dir/scripts" &&
+            test "$(head -n 1 "$dir/SKILL.md")" = "---" &&
+            test -n "$(awk 'NR > 1 && $0 == "---" { print NR; exit }' "$dir/SKILL.md")" &&
+            name="$(awk 'NR == 1 && $0 == "---" { in_fm = 1; next } in_fm && $0 == "---" { exit } in_fm && /^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); gsub(/^["'"'"']|["'"'"']$/, ""); print; exit }' "$dir/SKILL.md")" &&
+            test "$name" = "$(basename "$dir")" &&
+            awk 'NR == 1 && $0 == "---" { in_fm = 1; next } in_fm && $0 == "---" { exit } in_fm { print }' "$dir/SKILL.md" | grep -Eq '^description:[[:space:]]*.+' &&
+            awk 'NR == 1 && $0 == "---" { in_fm = 1; next } in_fm && $0 == "---" { exit } in_fm { print }' "$dir/SKILL.md" | grep -Eq '^version:[[:space:]]*.+' &&
+            grep -Fxq "## When to Use" "$dir/SKILL.md" &&
+            grep -Fxq "## Procedure" "$dir/SKILL.md" &&
+            grep -Fxq "## Verification" "$dir/SKILL.md"
+          timeout: 10
+          max-score: 10
+
+      - name: Check Open Track declaration format
+        id: check-open-track
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Check Open Track declaration format
+          setup-command: ""
+          command: |
+            test -f OPEN_TRACK.md &&
+            grep -Fxq "## 1. Skill 簡介" OPEN_TRACK.md &&
+            grep -Fxq "## 2. Skill 名稱與目錄" OPEN_TRACK.md &&
+            grep -Fxq "## 3. 呼叫方式" OPEN_TRACK.md &&
+            grep -Fxq "## 4. 自定 Verifiable Scenario" OPEN_TRACK.md &&
+            grep -Fxq "## 5. 預期失敗模式" OPEN_TRACK.md &&
+            grep -Fxq "## 6. 互動對象" OPEN_TRACK.md &&
+            grep -Fxq "## 7. Token Budget 估算" OPEN_TRACK.md
+          timeout: 10
+          max-score: 15
+
+      - name: Check Open Track skill format
+        id: check-open-skill
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Check Open Track skill format
+          setup-command: ""
+          command: |
+            dir="$(find skills -maxdepth 1 -type d -name 'open-*' | head -n 1)" &&
+            test -n "$dir" &&
+            test -f "$dir/SKILL.md" &&
+            test -d "$dir/scripts" &&
+            test "$(head -n 1 "$dir/SKILL.md")" = "---" &&
+            test -n "$(awk 'NR > 1 && $0 == "---" { print NR; exit }' "$dir/SKILL.md")" &&
+            name="$(awk 'NR == 1 && $0 == "---" { in_fm = 1; next } in_fm && $0 == "---" { exit } in_fm && /^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); gsub(/^["'"'"']|["'"'"']$/, ""); print; exit }' "$dir/SKILL.md")" &&
+            test "$name" = "$(basename "$dir")" &&
+            awk 'NR == 1 && $0 == "---" { in_fm = 1; next } in_fm && $0 == "---" { exit } in_fm { print }' "$dir/SKILL.md" | grep -Eq '^description:[[:space:]]*.+' &&
+            awk 'NR == 1 && $0 == "---" { in_fm = 1; next } in_fm && $0 == "---" { exit } in_fm { print }' "$dir/SKILL.md" | grep -Eq '^version:[[:space:]]*.+' &&
+            grep -Fxq "## When to Use" "$dir/SKILL.md" &&
+            grep -Fxq "## Procedure" "$dir/SKILL.md" &&
+            grep -Fxq "## Verification" "$dir/SKILL.md"
+          timeout: 10
+          max-score: 10
+
+      - name: Check report format
+        id: check-report
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Check report format
+          setup-command: ""
+          command: "test -f report.md && test $(wc -m < report.md) -gt 500"
+          timeout: 10
+          max-score: 5
+
+      - name: Autograding Reporter
+        uses: classroom-resources/autograding-grading-reporter@v1
+        env:
+          CHECK-SKILLS-DIR_RESULTS: "${{ steps.check-skills-dir.outputs.result }}"
+          CHECK-ROOT-FILES_RESULTS: "${{ steps.check-root-files.outputs.result }}"
+          CHECK-DEV-FILES_RESULTS: "${{ steps.check-dev-files.outputs.result }}"
+          CHECK-BASIC-SKILL_RESULTS: "${{ steps.check-basic-skill.outputs.result }}"
+          CHECK-PAIRWISE-ROLE_RESULTS: "${{ steps.check-pairwise-role.outputs.result }}"
+          CHECK-PAIRWISE-SKILL_RESULTS: "${{ steps.check-pairwise-skill.outputs.result }}"
+          CHECK-OPEN-TRACK_RESULTS: "${{ steps.check-open-track.outputs.result }}"
+          CHECK-OPEN-SKILL_RESULTS: "${{ steps.check-open-skill.outputs.result }}"
+          CHECK-REPORT_RESULTS: "${{ steps.check-report.outputs.result }}"
+        with:
+          runners: check-skills-dir,check-root-files,check-dev-files,check-basic-skill,check-pairwise-role,check-pairwise-skill,check-open-track,check-open-skill,check-report
