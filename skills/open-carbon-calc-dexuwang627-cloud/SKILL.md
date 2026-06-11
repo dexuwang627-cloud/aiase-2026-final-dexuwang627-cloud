@@ -1,6 +1,7 @@
 ---
 name: open-carbon-calc-dexuwang627-cloud
 description: Calculates carbon emissions from natural-language descriptions (Scope 1+2, Taiwan)
+version: 1.0.0
 tags: [carbon, emission, calculator, taiwan]
 ---
 

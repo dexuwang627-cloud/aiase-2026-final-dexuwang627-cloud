@@ -1,6 +1,7 @@
 ---
 name: text2sql-dexuwang627-cloud
 description: Converts natural-language questions + SQLite DDL into verified SQL queries
+version: 1.0.0
 tags: [text2sql, sql, database]
 ---
 

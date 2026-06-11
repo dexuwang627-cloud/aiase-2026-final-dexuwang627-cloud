@@ -1,6 +1,7 @@
 ---
 name: code-author-dexuwang627-cloud
 description: Produces Python code from task descriptions (max 500 S-LOC)
+version: 1.0.0
 tags: [code-generation, python]
 ---
 
