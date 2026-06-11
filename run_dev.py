@@ -170,7 +170,7 @@ class HermesResult:
 
 def call_hermes_skill(slash_command: str, payload: dict) -> HermesResult:
     """
-    呼叫 `hermes chat --toolsets skills -q '<slash_command> <payload_json>'`。
+    呼叫 `hermes chat --toolsets skills,terminal --yolo -q '<slash_command> <payload_json>'`。
 
     若 hermes 不在 PATH,回傳 ok=False 並標註 error,呼叫端可決定要 skip 還是 fail。
     """
@@ -182,7 +182,7 @@ def call_hermes_skill(slash_command: str, payload: dict) -> HermesResult:
 
     payload_str = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     arg = f"{slash_command} {payload_str}"
-    cmd = [HERMES_BIN, "chat", "--toolsets", "skills", "-q", arg]
+    cmd = [HERMES_BIN, "chat", "--toolsets", "skills,terminal", "--yolo", "-q", arg]
 
     t0 = time.time()
     try:

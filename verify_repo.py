@@ -161,21 +161,39 @@ def check_pairwise_role(rep: Report) -> None:
         rep.add("pairwise-role:exists", False, "PAIRWISE_ROLE.md missing")
         return
     text = _read(p)
-    role_m = re.search(r"^role:\s*(code-author|bug-hunter)\s*$", text, re.MULTILINE)
-    path_m = re.search(r"^skill_path:\s*(\S+)\s*$", text, re.MULTILINE)
-    if not role_m:
+    # Support both old single-role format and new list format (§2.3 update)
+    # Old:  role: code-author        New:  - role: code-author
+    #       skill_path: skills/...          skill_path: skills/...
+    roles = re.findall(r"(?:-\s*)?role:\s*(code-author|bug-hunter)", text)
+    paths = re.findall(r"skill_path:\s*(\S+)", text)
+    if not roles:
         rep.add("pairwise-role:role", False, "role line missing or invalid")
         return
-    rep.add("pairwise-role:role", True, role_m.group(1))
-    if not path_m:
+    # Must have both roles for pairwise
+    has_author = "code-author" in roles
+    has_hunter = "bug-hunter" in roles
+    if not (has_author and has_hunter):
+        missing = []
+        if not has_author:
+            missing.append("code-author")
+        if not has_hunter:
+            missing.append("bug-hunter")
+        rep.add("pairwise-role:role", False, f"missing roles: {', '.join(missing)}")
+        return
+    rep.add("pairwise-role:role", True, f"{', '.join(roles)}")
+    if not paths:
         rep.add("pairwise-role:skill_path", False, "skill_path line missing")
         return
-    sp = path_m.group(1).rstrip("/")
-    target = REPO_ROOT / sp
-    if not target.is_dir():
-        rep.add("pairwise-role:skill_path", False, f"path not a directory: {sp}")
-        return
-    rep.add("pairwise-role:skill_path", True, sp)
+    # Check all skill_paths point to existing directories
+    all_valid = True
+    for sp in paths:
+        sp_clean = sp.rstrip("/")
+        target = REPO_ROOT / sp_clean
+        if not target.is_dir():
+            rep.add("pairwise-role:skill_path", False, f"path not a directory: {sp_clean}")
+            all_valid = False
+    if all_valid:
+        rep.add("pairwise-role:skill_path", True, ", ".join(p.rstrip("/") for p in paths))
 
 
 def check_no_absolute_paths(rep: Report) -> None:
