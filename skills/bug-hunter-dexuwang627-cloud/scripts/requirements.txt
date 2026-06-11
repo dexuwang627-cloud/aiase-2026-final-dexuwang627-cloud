@@ -1,0 +1,1 @@
+# No external dependencies — bug-hunter uses only Python stdlib (ast, json, sys, traceback, multiprocessing, pathlib)

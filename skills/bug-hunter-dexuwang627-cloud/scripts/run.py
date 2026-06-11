@@ -5,13 +5,33 @@ from __future__ import annotations
 
 import ast
 import json
-import signal
+import multiprocessing
 import sys
 import traceback
 from contextlib import contextmanager
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+def _find_repo_root() -> Path:
+    """Walk up from __file__ to find the directory containing dev_set/pairwise/reference_tasks/.
+
+    This works regardless of how the skill is installed:
+    - Directly in the repo: skills/bug-hunter-xxx/scripts/run.py → parents[3]
+    - Via hermes external_dirs: same as above (symlinked or referenced)
+    - Via hermes copy install: may be at arbitrary depth, so we search upward
+    """
+    current = Path(__file__).resolve().parent
+    for _ in range(10):  # safety limit
+        candidate = current / "dev_set" / "pairwise" / "reference_tasks"
+        if candidate.is_dir():
+            return current
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
+    # Fallback: assume standard repo layout (script is 3 levels deep)
+    return Path(__file__).resolve().parents[3]
+
+REPO_ROOT = _find_repo_root()
 TASK_DIR = REPO_ROOT / "dev_set" / "pairwise" / "reference_tasks"
 
 MAX_BUGS = 5
@@ -21,22 +41,38 @@ class _Timeout(Exception):
     pass
 
 
-@contextmanager
-def _time_limit(sec: float):
-    if not hasattr(signal, "SIGALRM"):
-        yield
+def _run_single_probe(result_queue: multiprocessing.Queue, code: str, entry: str, args, expected) -> None:
+    """Worker function for multiprocessing-based probe execution."""
+    ns: dict = {}
+    try:
+        exec(compile(code, "<candidate>", "exec"), ns)
+    except Exception as e:
+        tb = traceback.extract_tb(e.__traceback__)
+        for f in tb:
+            if f.filename == "<candidate>" and f.lineno:
+                result_queue.put(("crash", f.lineno))
+                return
+        result_queue.put(("crash", 1))
         return
 
-    def _h(s, f):
-        raise _Timeout("probe timed out")
+    fn = ns.get(entry)
+    if not callable(fn):
+        result_queue.put(("crash", 1))
+        return
 
-    old = signal.signal(signal.SIGALRM, _h)
-    signal.setitimer(signal.ITIMER_REAL, sec)
     try:
-        yield
-    finally:
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        signal.signal(signal.SIGALRM, old)
+        got = fn(*args) if isinstance(args, list) else fn(args)
+        if got != expected:
+            result_queue.put(("mismatch", None))
+        else:
+            result_queue.put(("pass", None))
+    except Exception as e:
+        tb = traceback.extract_tb(e.__traceback__)
+        for f in tb:
+            if f.filename == "<candidate>" and f.lineno:
+                result_queue.put(("crash", f.lineno))
+                return
+        result_queue.put(("crash", 1))
 
 
 def _load_task(task_id: str) -> dict | None:
@@ -49,12 +85,17 @@ def _load_task(task_id: str) -> dict | None:
         return None
 
 
-def _run_probes(code: str, entry: str, test_cases: list[dict], timeout: float = 1.0) -> tuple[list[int], int]:
-    """Run test cases against candidate code. Returns (crash_lines, mismatch_count)."""
+def _run_probes(code: str, entry: str, test_cases: list[dict], timeout: float = 5.0) -> tuple[list[int], int]:
+    """Run test cases against candidate code. Returns (crash_lines, mismatch_count).
+
+    Uses multiprocessing for timeout isolation — works on all platforms
+    including those without SIGALRM (Windows, some containers).
+    """
     ns: dict = {}
     crash_lines: list[int] = []
+    mismatch_count = 0
 
-    # Try to compile and exec the code
+    # Try to compile and exec the code first (cheap, no timeout needed)
     try:
         exec(compile(code, "<candidate>", "exec"), ns)
     except Exception as e:
@@ -68,29 +109,32 @@ def _run_probes(code: str, entry: str, test_cases: list[dict], timeout: float = 
     if not callable(fn):
         return [1], 0
 
-    mismatch_count = 0
     for tc in test_cases:
         args = tc.get("input", [])
         expected = tc.get("expected")
-        try:
-            with _time_limit(timeout):
-                got = fn(*args) if isinstance(args, list) else fn(args)
-        except _Timeout:
+
+        result_queue: multiprocessing.Queue = multiprocessing.Queue()
+        proc = multiprocessing.Process(
+            target=_run_single_probe,
+            args=(result_queue, code, entry, args, expected),
+        )
+        proc.start()
+        proc.join(timeout=timeout)
+
+        if proc.is_alive():
+            # Timed out
+            proc.terminate()
+            proc.join(timeout=1.0)
             crash_lines.append(1)
             continue
-        except Exception as e:
-            tb = traceback.extract_tb(e.__traceback__)
-            found_line = False
-            for f in tb:
-                if f.filename == "<candidate>" and f.lineno:
-                    crash_lines.append(f.lineno)
-                    found_line = True
-                    break
-            if not found_line:
-                crash_lines.append(1)
-            continue
-        if got != expected:
-            mismatch_count += 1
+
+        if not result_queue.empty():
+            result_type, line = result_queue.get()
+            if result_type == "crash":
+                crash_lines.append(line)
+            elif result_type == "mismatch":
+                mismatch_count += 1
+            # "pass" — do nothing
 
     return crash_lines, mismatch_count
 
@@ -376,4 +420,5 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     sys.exit(main(sys.argv))
