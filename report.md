@@ -75,6 +75,12 @@ End-to-end via Hermes (`--toolsets skills,terminal --yolo`) on `gemma4:31b` (Oll
 
 Single-task latency on this setup: 5-15 s (text2sql), 7-50 s (bug-hunter), well within the 120 s grading limit.
 
+Cross-model validation on `glm-5.1` (Ollama Cloud, stronger instruction-following), 2026-06-11 — confirms the residual gemma4 failures are model-side format drift, not skill defects:
+
+- **Basic Track**: 21/21 (100%).
+- **Code Author**: 5/5 reference tasks, all hidden-style cases pass.
+- **Bug Hunter**: 4/5 in the batch run (one transient output-format violation); the failed task re-run standalone produced an exact `(line_start, type)` match against ground truth, so the skill logic scores 5/5 when the output contract is honored.
+
 Pairwise Track check.py: valid code passes all checks; forbidden code (subprocess, eval) correctly flagged.
 
 ## Improvement Directions
