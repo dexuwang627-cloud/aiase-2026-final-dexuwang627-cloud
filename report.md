@@ -8,7 +8,7 @@ The central design decision across all three tracks is **"deterministic shell wr
 
 - **Open Track (Carbon Calculator)**: LLM extracts parameters from natural language and classifies emission categories; `scripts/calculate.py` performs all numeric calculations using `scripts/emission_factors.json`. The LLM never computes emissions manually. This guarantees arithmetic correctness regardless of model capability.
 
-- **Basic Track (Text2SQL)**: LLM generates SQL from question + schema; `scripts/validate.py` enforces read-only constraint and syntax correctness. The validator catches DDL/DML injection before output.
+- **Basic Track (Text2SQL)**: LLM generates SQL from question + schema; `scripts/validate_sql.py` enforces the read-only constraint and runs SQLite `EXPLAIN` against the provided DDL for syntax + schema verification. The validator catches DDL/DML injection before output.
 
 - **Pairwise Track (Code Author)**: LLM generates Python code; `scripts/check.py` validates syntax, forbidden imports, and S-LOC limits. The checker provides a hard boundary on code quality.
 
@@ -50,7 +50,7 @@ When the LLM's classification confidence is low, keyword-matching rules provide 
 |-------------|-------|-----------|
 | LLM misclassifies emission category | Open | Keyword fallback rules; confidence lowered |
 | LLM computes manually instead of calling scripts | Open | SKILL.md explicitly prohibits; evaluator catches discrepancies |
-| SQL contains DDL/DML | Basic | validate.py rejects forbidden keywords |
+| SQL contains DDL/DML | Basic | validate_sql.py rejects forbidden keywords |
 | Generated code exceeds 500 S-LOC | Pairwise | check.py reports S-LOC count; SKILL.md instructs conciseness |
 | JSON schema violation | All | Explicit output schema in each SKILL.md |
 | Number extraction error (multiple numbers) | Open | LLM instructed to identify each number's referent |
