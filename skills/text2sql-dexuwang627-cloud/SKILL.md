@@ -37,11 +37,13 @@ Convert a natural-language question and a SQLite database schema (DDL) into a ve
 ```json
 {
   "task_id": "string — same as input task_id",
-  "sql": "string — read-only SQLite SELECT statement",
-  "rationale": "string — step-by-step reasoning explaining how the question maps to the generated SQL",
+  "sql": "string — read-only SQLite SELECT statement, single line",
+  "rationale": "string — 1-2 sentences explaining how the question maps to the generated SQL",
   "confidence": "float — 0.0 to 1.0, estimated likelihood the SQL is correct"
 }
 ```
+
+**CRITICAL output contract**: your final message must START with ` ```json ` and contain exactly one fenced JSON block, nothing else. All four fields (`task_id`, `sql`, `rationale`, `confidence`) are required; `task_id` is copied from the input unchanged. The SQL always lives inside the JSON as a single-line string value of the `sql` field. This applies to EVERY task, especially complex ones with JOINs, subqueries, or CTEs.
 
 ### Output Example
 
@@ -331,7 +333,7 @@ Use this skill when the input contains a natural-language question about data an
 2. Analyze the `question` to determine the query intent: lookup, aggregation, comparison, ranking, or join.
 3. Map question terms to schema elements (table names, column names, relationships).
 4. Generate a read-only SQLite SELECT or WITH statement that answers the question.
-5. Validate the generated SQL using `scripts/validate_sql.py` to ensure it is read-only, syntactically sound, and compatible with the provided schema.
+5. Validate the generated SQL using `scripts/validate_sql.py` to ensure it is read-only, syntactically sound, and compatible with the provided schema. The `scripts/` path is relative to this skill's directory — if the terminal's working directory is elsewhere, locate the skill directory first. If the script cannot be located after one attempt, check the rules mentally and proceed.
 6. Output a single fenced JSON block with `task_id`, `sql`, `rationale`, and `confidence`.
 
 ## Verification
@@ -342,3 +344,7 @@ After generating SQL, run `scripts/validate_sql.py` to confirm:
 - The SQL is a single statement (no semicolons separating multiple queries).
 
 If validation fails, revise the SQL and re-validate before outputting.
+
+## Final Reminder (applies to EVERY response)
+
+The last thing you output is always one ` ```json ` fenced block with `task_id` (copied verbatim from input), `sql` (single-line string), `rationale` (1-2 sentences), `confidence` (0.0-1.0) — and no other text. Never end with a ` ```sql ` block or bare SQL.

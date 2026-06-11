@@ -55,6 +55,17 @@ A single fenced JSON block with this exact structure:
 - `bugs`: Array of bug objects (max 5). Each has `line_start`, `line_end`, `severity` (low/medium/high), `type`, `description`, `suggested_fix`.
 - `confidence`: 0.0–1.0 indicating how confident the analysis is.
 
+### Bug `type` taxonomy (MANDATORY — use EXACTLY one of these four values)
+
+| `type` | Use when |
+|--------|----------|
+| `edge_case` | Code fails on boundary/special inputs: empty list, empty string, zero, single element, all-equal values |
+| `off_by_one` | Loop range, index, or comparison boundary is off by one (`<` vs `<=`, `len(x)-1`, skipped first/last element) |
+| `unhandled_input` | An input form the spec allows is not handled: None, negative numbers, mixed types, malformed values |
+| `logic_error` | Any other incorrect algorithm, condition, operator, or state handling that produces wrong results |
+
+Never invent other type names (e.g. `index_error`, `crash`, `runtime_error` are NOT valid). A crash on empty input is `edge_case`; a crash on None input is `unhandled_input`. Grading matches bugs by exact `(line_start, type)` pairs, so a wrong type name scores zero even when the line is right.
+
 ## Bug Detection Strategy
 
 This skill uses a **three-layer detection** approach:
@@ -99,10 +110,10 @@ Layer 3 findings are **only reported when Layer 1 or Layer 2 provides supporting
 ## Procedure
 
 1. Parse the input JSON payload.
-2. Run `python scripts/run.py '<payload>'` to execute deterministic analysis (probe + AST).
+2. Run `python3 scripts/run.py '<payload>'` to execute deterministic analysis (probe + AST). The `scripts/` path is relative to this skill's own directory — if the terminal's working directory is elsewhere, first locate this skill's directory (e.g. via the path shown when the skill was loaded) and run the script from there.
 3. The script handles Layers 1-2 deterministically. Layer 3 (LLM reasoning) is the Hermes agent's own judgment: review the deterministic results alongside the `task_description`, and if Layer 1 or 2 found concrete evidence, enrich descriptions and suggest fixes based on task context.
 4. If no evidence from Layers 1-2, report `verdict=clean` — do not fabricate bugs.
-5. Output a single fenced JSON block.
+5. Output a single fenced JSON block. The final message must contain ONLY that fenced JSON block — no surrounding prose, headers, or commentary.
 
 ## Quality Rules
 

@@ -227,6 +227,8 @@ The checker validates:
 - `confidence` must be 0.0–1.0
 - All calculations must be deterministic — no randomness unless the task requires it
 - If the task is ambiguous, make reasonable assumptions and document them in a brief comment within the code
+- Keep the total response short: do not restate the task, do not explain the algorithm outside the code, and write the most concise correct implementation. Long responses risk output truncation and timeouts
+- The final message must contain ONLY the fenced JSON block — no surrounding prose
 
 ## When to Use
 
@@ -237,7 +239,7 @@ Use this skill when the input is a programming task description asking for Pytho
 1. Read the task description and identify the required function signature, input types, output type, and constraints.
 2. Choose the simplest correct algorithm — prefer standard library, built-in data structures, and iterative solutions over recursion.
 3. Write clean Python code with type hints, docstrings for complex functions, and edge case guards (None, empty, extreme values).
-4. Run `scripts/check.py` on the generated code to verify syntax, no forbidden imports/calls, and S-LOC ≤ 500.
+4. Run `python3 scripts/check.py` on the generated code to verify syntax, no forbidden imports/calls, and S-LOC ≤ 500. The `scripts/` path is relative to this skill's directory — if the terminal's working directory is elsewhere, locate this skill's directory first and run the script from there. If the script cannot be located after one attempt, perform the checks mentally (valid syntax, no forbidden imports, S-LOC ≤ 500) and proceed — do not spend turns searching.
 5. Output a single fenced JSON block with `task_id`, `code` (the Python source), and `confidence`.
 
 ## Verification

@@ -165,7 +165,7 @@ def _ast_smells(code: str, entry: str) -> list[dict]:
                         "line_start": d.lineno,
                         "line_end": d.lineno,
                         "severity": "medium",
-                        "type": "api_misuse",
+                        "type": "logic_error",
                         "description": "Mutable default argument persists state across calls.",
                         "suggested_fix": "Use None default and create the container inside the function.",
                     })
@@ -192,7 +192,7 @@ def _ast_smells(code: str, entry: str) -> list[dict]:
                     "line_start": node.lineno,
                     "line_end": node.lineno,
                     "severity": "high",
-                    "type": "api_misuse",
+                    "type": "logic_error",
                     "description": f"Use of `{name}` is unsafe and forbidden.",
                     "suggested_fix": "Replace with a safe parser or explicit dispatch.",
                 })

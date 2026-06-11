@@ -64,10 +64,11 @@ For every query, follow this sequence:
 1. **Classify**: Determine which emission categories are involved
 2. **Extract**: Pull numeric values and units from the description
 3. **Validate**: Check that extracted values make sense (positive numbers, valid fuel types, known refrigerants)
-4. **Calculate**: Call `scripts/calculate.py` with extracted parameters
-5. **Aggregate**: If multiple categories, call `scripts/calculate.py combined` to sum
-6. **Verify**: Sanity-check results (e.g., Scope 2 should be 0 for fuel-only, total should match sum)
-7. **Format**: Output as single fenced JSON block
+4. **Calculate**: Call `scripts/calculate.py` with extracted parameters. For multiple categories, make ONE `scripts/calculate.py combined` call instead of separate per-category calls — it returns the per-item breakdown and the total in a single invocation
+5. **Verify**: Sanity-check results (e.g., Scope 2 should be 0 for fuel-only, total should match sum)
+6. **Format**: Output as single fenced JSON block. The final message must contain ONLY that fenced JSON block — no surrounding prose
+
+Keep intermediate reasoning brief — one short line per step. Minimizing turns and output length avoids timeouts and truncation.
 
 ## Classification Rules (Keyword Fallback)
 
@@ -81,6 +82,8 @@ When the LLM is uncertain about category classification, use keyword matching:
 | 開車, 交通, 公里, km, 車, vehicle, 運輸 | transportation | 1 |
 
 ## Calculation Commands
+
+All `scripts/` paths are relative to this skill's own directory. If the terminal's working directory is elsewhere, locate this skill's directory first and run the scripts from there.
 
 ```bash
 # Electricity (Scope 2)

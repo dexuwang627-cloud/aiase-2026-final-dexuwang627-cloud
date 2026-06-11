@@ -24,7 +24,7 @@ Emission factors are stored in a separate JSON file (`emission_factors.json`) ra
 
 ### 3. Multi-Step Interaction for Rich Logs
 
-The Open Track SKILL.md specifies a 7-step interaction flow (Classify → Extract → Validate → Calculate → Aggregate → Verify → Format). This creates richer interaction logs that demonstrate the LLM's reasoning process, which is worth 30% of the Open Track score.
+The Open Track SKILL.md specifies a 6-step interaction flow (Classify → Extract → Validate → Calculate → Verify → Format). Multi-source aggregation is folded into a single `calculate.py combined` call to keep per-task latency within grading time limits, while still producing interaction logs that demonstrate the LLM's reasoning process, which is worth 30% of the Open Track score.
 
 ### 4. Keyword Fallback Rules
 
@@ -40,6 +40,10 @@ When the LLM's classification confidence is low, keyword-matching rules provide 
 
 3. **Agent dispatch timeout**: Two of three parallel agents (open-track, pairwise-track) timed out during implementation. The team lead directly implemented the remaining tracks, demonstrating that fallback to manual implementation is viable when agent infrastructure fails.
 
+4. **Bug-hunter type taxonomy mismatch**: First end-to-end runs scored recall=0.00 on 4/5 reference tasks even though the hunter located the correct lines. Root cause: grading matches bugs by exact `(line_start, type)` pairs against a fixed taxonomy (`edge_case`, `off_by_one`, `logic_error`, `unhandled_input`), but the LLM invented its own type names (e.g. `index_error`). Fixed by hard-constraining the taxonomy in SKILL.md with per-type usage guidance and aligning `scripts/run.py` emissions to the same four values; recall recovered immediately.
+
+5. **Negative few-shot backfires on small models**: Adding a "WRONG output" example containing a literal ` ```sql ` block to the text2sql SKILL.md *increased* format violations on gemma4-31b (the model imitates the example's shape and ignores the WRONG label). Removed the negative example, keeping only positive examples and a short contract statement.
+
 ### Expected Runtime Failures
 
 | Failure Mode | Track | Mitigation |
@@ -54,7 +58,7 @@ When the LLM's classification confidence is low, keyword-matching rules provide 
 
 ### Execution Log Evidence
 
-All three scenarios in the Open Track evaluator pass with score 1.0:
+Deterministic evaluator (scripts only, no LLM) — all three Open Track scenarios pass with score 1.0:
 
 ```
 Scenario 1 (office_combined): 3/3 checks passed (total, scope1, scope2)
@@ -62,7 +66,14 @@ Scenario 2 (multi_fuel): 3/3 checks passed (total, diesel, natural_gas)
 Scenario 3 (multi_refrigerant): 7/7 checks passed (total, gwp×3, emission×3)
 ```
 
-Basic Track dev set: 20/20 passed with run_dev.py evaluator.
+End-to-end via Hermes (`--toolsets skills,terminal --yolo`) on `gemma4:31b` (Ollama Cloud, closest available proxy for the course Gemma-4-31B-IT gateway model), 2026-06-11:
+
+- **Open Track**: scenario 1 live run scored 1.0 on the evaluator (LLM extracted both sources, called `calculate.py combined` once, output matched ground truth exactly: 10188.8 kg CO₂e).
+- **Code Author**: 5/5 reference tasks passed (all hidden-style test cases) in 2 of 3 runs; 3/5 in one run due to sampling variance.
+- **Bug Hunter**: improved from 1/5 to 2-3/5 after constraining the bug `type` taxonomy (see Failure 4 below); residual misses are line-attribution variance on a 31B model.
+- **Basic Track**: 10-13/21 on gemma4-31b. Failures are dominated by output-format drift (the model emits a ` ```sql ` block instead of the required ` ```json ` block on complex queries) rather than SQL correctness — when the JSON contract is honored, the SQL itself passes bag-equality. Two tasks (012, 020, both double-negation/nested-subquery) also fail on SQL semantics at this model size.
+
+Single-task latency on this setup: 5-15 s (text2sql), 7-50 s (bug-hunter), well within the 120 s grading limit.
 
 Pairwise Track check.py: valid code passes all checks; forbidden code (subprocess, eval) correctly flagged.
 
@@ -83,6 +94,8 @@ Pairwise Track check.py: valid code passes all checks; forbidden code (subproces
 7. **Cross-cutting — Interaction log analysis**: After grading, analyze interaction logs to identify common LLM failure patterns and refine SKILL.md prompts accordingly.
 
 ## Interaction Log Examples
+
+The flows below were verified against live Hermes sessions on gemma4:31b (2026-06-11); the Open Track scenario 1 live output reproduced the exact figures shown here and scored 1.0 on `scripts/evaluator.py`.
 
 ### Open Track — Scenario 1: Office Combined Emission
 
