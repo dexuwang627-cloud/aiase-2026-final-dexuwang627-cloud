@@ -4,13 +4,11 @@
 > 評分時，課程會**隨機抽取其中一個角色**，並與另一位同學隨機配對來評分。
 > 因此請**同時宣告兩個 skill 的路徑**，格式如下（`roles` 為一個 list，含兩筆）。
 
-```markdown
 roles:
   - role: code-author
     skill_path: skills/code-author-dexuwang627-cloud/
   - role: bug-hunter
     skill_path: skills/bug-hunter-dexuwang627-cloud/
-```
 
 ## 規則
 

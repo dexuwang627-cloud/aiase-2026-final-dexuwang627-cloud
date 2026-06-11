@@ -100,10 +100,9 @@ Layer 3 findings are **only reported when Layer 1 or Layer 2 provides supporting
 
 1. Parse the input JSON payload.
 2. Run `python scripts/run.py '<payload>'` to execute deterministic analysis (probe + AST).
-3. Review the deterministic results alongside the `task_description`.
-4. If Layer 1 or 2 found concrete evidence, use LLM reasoning to enrich descriptions and suggest fixes.
-5. If no evidence from Layers 1-2, report `verdict=clean` — do not fabricate bugs.
-6. Output a single fenced JSON block.
+3. The script handles Layers 1-2 deterministically. Layer 3 (LLM reasoning) is the Hermes agent's own judgment: review the deterministic results alongside the `task_description`, and if Layer 1 or 2 found concrete evidence, enrich descriptions and suggest fixes based on task context.
+4. If no evidence from Layers 1-2, report `verdict=clean` — do not fabricate bugs.
+5. Output a single fenced JSON block.
 
 ## Quality Rules
 
@@ -124,5 +123,7 @@ After generating a bug report, verify:
 - Confidence is between 0.0 and 1.0.
 
 ## When to Use
+
+`/bug-hunter-dexuwang627-cloud {"task_id":"task_pair_001", "code":"def merge_intervals(intervals): ...", "task_description":"Merge overlapping intervals..."}`.
 
 Use this skill when the input contains Python code and a task description asking for bug detection. The skill analyzes the code for correctness bugs, edge case failures, and common Python pitfalls.

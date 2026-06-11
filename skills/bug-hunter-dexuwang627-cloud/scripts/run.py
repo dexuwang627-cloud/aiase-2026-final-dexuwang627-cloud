@@ -164,20 +164,28 @@ def _ast_smells(code: str, entry: str) -> list[dict]:
 
 
 def _check_missing_return_at_end(func_node: ast.FunctionDef | ast.AsyncFunctionDef, bugs: list[dict]) -> None:
-    """Check if a function with early returns lacks a final return statement.
+    """Check if a function with value returns lacks a final return statement.
 
     Only flags when:
-    - The function has at least one explicit `return <value>` (not bare `return`)
-    - The last statement in the function body is NOT a return statement
+    - The function has at least one `return <expr>` in its direct body (not nested)
+    - The last statement in the function body is NOT a return, loop, or compound stmt
     - The function does NOT end with a for/while loop that might contain the return
 
-    This avoids false positives on functions that return from all paths via
-    early returns + a final return statement, or functions with no returns at all.
+    Uses direct body scan (not ast.walk) to avoid false positives from
+    nested function definitions or lambdas containing return statements.
     """
     has_value_return = False
-    for node in ast.walk(func_node):
+    for node in func_node.body:
         if isinstance(node, ast.Return) and node.value is not None:
             has_value_return = True
+            break
+        # Also check inside if/for/try blocks at the top level
+        if isinstance(node, (ast.If, ast.For, ast.While, ast.With, ast.AsyncWith, ast.Try)):
+            for child in ast.walk(node):
+                if isinstance(child, ast.Return) and child.value is not None:
+                    has_value_return = True
+                    break
+        if has_value_return:
             break
 
     if not has_value_return:
@@ -188,7 +196,7 @@ def _check_missing_return_at_end(func_node: ast.FunctionDef | ast.AsyncFunctionD
     if isinstance(last_stmt, ast.Return):
         return  # Final return exists, all good
 
-    # If last statement is a for/while/with, the return might be inside it — skip
+    # If last statement is a for/while/with/if/try, the return might be inside it — skip
     if isinstance(last_stmt, (ast.For, ast.While, ast.With, ast.AsyncWith, ast.If, ast.Try)):
         return
 
@@ -263,23 +271,29 @@ def main(argv: list[str]) -> int:
     code = str(payload.get("code", ""))
     task_description = str(payload.get("task_description", ""))
 
-    # Load reference task data
-    task = _load_task(task_id)
-    if task is None or not code:
+    # If no code provided, nothing to analyze
+    if not code:
         return emit({
             "task_id": task_id,
             "verdict": "clean",
             "bugs": [],
-            "confidence": 0.5,
+            "confidence": 0.3,
         })
 
-    entry = task["constraints"]["entry_function"]
-    test_cases = task.get("test_cases", [])
+    # Load reference task data (may be None if task_id not found)
+    task = _load_task(task_id)
 
-    # Layer 1: Probe execution
-    crash_lines, mismatches = _run_probes(code, entry, test_cases)
+    # Graceful degradation: even without task data, we can still run AST analysis
+    entry = task.get("constraints", {}).get("entry_function", "") if task else ""
+    test_cases = task.get("test_cases", []) if task else []
 
-    # Layer 2: AST analysis
+    # Layer 1: Probe execution (only if we have test cases and entry function)
+    crash_lines: list[int] = []
+    mismatches = 0
+    if entry and test_cases:
+        crash_lines, mismatches = _run_probes(code, entry, test_cases)
+
+    # Layer 2: AST analysis (always runs, even without task data)
     ast_bugs = _ast_smells(code, entry)
 
     # Build bug list
