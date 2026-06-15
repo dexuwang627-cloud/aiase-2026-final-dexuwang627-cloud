@@ -31,7 +31,7 @@ Fields:
 
 ## Output
 
-A single fenced JSON block with this exact structure:
+The final result is written to the result file by `scripts/run.py`, not printed in the chat. The JSON object has this structure:
 
 ```json
 {
@@ -110,10 +110,15 @@ Layer 3 findings are **only reported when Layer 1 or Layer 2 provides supporting
 ## Procedure
 
 1. Parse the input JSON payload.
-2. Run `python3 scripts/run.py '<payload>'` to execute deterministic analysis (probe + AST). The `scripts/` path is relative to this skill's own directory — if the terminal's working directory is elsewhere, first locate this skill's directory (e.g. via the path shown when the skill was loaded) and run the script from there.
-3. The script handles Layers 1-2 deterministically. Layer 3 (LLM reasoning) is the Hermes agent's own judgment: review the deterministic results alongside the `task_description`, and if Layer 1 or 2 found concrete evidence, enrich descriptions and suggest fixes based on task context.
-4. If no evidence from Layers 1-2, report `verdict=clean` — do not fabricate bugs.
-5. Output a single fenced JSON block. The final message must contain ONLY that fenced JSON block — no surrounding prose, headers, or commentary.
+2. **Use the `terminal` tool (do not use process/background tools)** with the **absolute path** to run:
+
+   ```
+   python3 <skill_dir>/scripts/run.py '<payload>'
+   ```
+
+   where `<skill_dir>` is the directory Hermes reports when loading this skill. The script executes deterministic analysis (probe + AST) and atomically writes the final bug report to the result file (path from the environment variable `AIASE_RESULT_PATH`, falling back to `./aiase_result.json`).
+3. The script handles Layers 1-2 deterministically. Layer 3 (LLM reasoning) is the Hermes agent's own judgment: review the deterministic results alongside the `task_description`, and if Layer 1 or 2 found concrete evidence, enrich descriptions and suggest fixes based on task context. **You do not need to output or repeat the JSON in the chat message.**
+4. If no evidence from Layers 1-2, the script reports `verdict=clean` — do not fabricate bugs.
 
 ## Quality Rules
 
@@ -122,11 +127,12 @@ Layer 3 findings are **only reported when Layer 1 or Layer 2 provides supporting
 - **Deduplicate**: same (line, type) pair only reported once.
 - **Deterministic core**: `scripts/run.py` is the source of truth for crash/mismatch detection. LLM reasoning only enriches, never overrides.
 - Code that cannot compile/exec reports a bug at line 1 with the compile error.
+- The skill's final action is to execute `scripts/run.py`; do not print a fenced JSON block in the chat.
 
 ## Verification
 
-After generating a bug report, verify:
-- Output is valid JSON inside a fenced code block.
+After invoking `scripts/run.py`, verify:
+- The result file exists and is valid JSON.
 - `task_id` matches input.
 - `verdict` is `"buggy"` or `"clean"`.
 - Each bug has all required fields.

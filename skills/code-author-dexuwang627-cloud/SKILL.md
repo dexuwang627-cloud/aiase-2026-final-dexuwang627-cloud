@@ -34,12 +34,15 @@ Fields:
 
 ## Output
 
-A single fenced JSON block with this exact structure:
+The final result is written to the result file by `scripts/run.py`, not printed in the chat. The JSON object has this structure:
 
 ```json
 {
   "task_id": "task_pair_001",
   "code": "def merge_intervals(intervals: list[list[int]]) -> list[list[int]]:\n    ...",
+  "loc": 12,
+  "self_test_results": {"passed": 3, "failed": 0},
+  "rationale": "Standard interval merge with edge-case guards.",
   "confidence": 0.9
 }
 ```
@@ -222,14 +225,13 @@ The checker validates:
 
 ## Rules
 
-- Output must be a single fenced JSON block containing `task_id`, `code`, and `confidence`
+- The skill's final action is to execute `scripts/run.py`; do not print a fenced JSON block in the chat.
 - `task_id` must pass through from input unchanged
-- `code` must be self-contained Python — no markdown fences around the code itself, no explanations
+- `code` must be self-contained Python — no markdown fences around the code itself, no explanations in the chat
 - `confidence` must be 0.0–1.0
 - All calculations must be deterministic — no randomness unless the task requires it
 - If the task is ambiguous, make reasonable assumptions and document them in a brief comment within the code
 - Keep the total response short: do not restate the task, do not explain the algorithm outside the code, and write the most concise correct implementation. Long responses risk output truncation and timeouts
-- The final message must contain ONLY the fenced JSON block — no surrounding prose
 
 ## When to Use
 
@@ -241,13 +243,28 @@ Use this skill when the input is a programming task description asking for Pytho
 2. Choose the simplest correct algorithm — prefer standard library, built-in data structures, and iterative solutions over recursion.
 3. Write clean Python code with type hints, docstrings for complex functions, and edge case guards (None, empty, extreme values).
 4. Run `python3 scripts/check.py` on the generated code to verify syntax, no forbidden imports/calls, and S-LOC ≤ 500. The `scripts/` path is relative to this skill's directory — if the terminal's working directory is elsewhere, locate this skill's directory first and run the script from there. If the script cannot be located after one attempt, perform the checks mentally (valid syntax, no forbidden imports, S-LOC ≤ 500) and proceed — do not spend turns searching.
-5. Output a single fenced JSON block with `task_id`, `code` (the Python source), and `confidence`.
+5. Optionally run `python3 scripts/selftest.py` on the generated code to count how many sample inputs pass/fail. Extract `passed` and `failed`.
+6. **Use the `terminal` tool (do not use process/background tools)** with the **absolute path** to run:
+
+   ```
+   python3 <skill_dir>/scripts/run.py --task_id "<task_id>" \
+     --code "<your python code>" --loc <int> \
+     --self_test_passed <int> --self_test_failed <int> \
+     --rationale "<short reason>" --confidence 0.9
+   ```
+
+   where `<skill_dir>` is the directory Hermes reports when loading this skill.
+7. `scripts/run.py` atomically writes the final result to the result file (path from the environment variable `AIASE_RESULT_PATH`, falling back to `./aiase_result.json`).
+   **You do not need to output or repeat the JSON in the chat message.**
 
 ## Verification
 
-After generating code, run `scripts/check.py <file>` to confirm:
-- Syntax is valid Python (ast.parse succeeds).
-- No forbidden imports (subprocess, socket, requests, urllib, http, ftplib, smtplib) or calls (eval, exec, __import__).
-- S-LOC is within the 500-line limit.
+After generating code:
+1. Run `scripts/check.py <file>` to confirm:
+   - Syntax is valid Python (ast.parse succeeds).
+   - No forbidden imports (subprocess, socket, requests, urllib, http, ftplib, smtplib) or calls (eval, exec, __import__).
+   - S-LOC is within the 500-line limit.
+2. Run `scripts/run.py` to write the result file.
+3. Confirm the result file is valid JSON with `task_id`, `code`, `loc`, `self_test_results`, `rationale`, and `confidence`.
 
-If validation fails, revise the code and re-validate before outputting.
+If validation fails, revise the code and re-validate before writing the result file.

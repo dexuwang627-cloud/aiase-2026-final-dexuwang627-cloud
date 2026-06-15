@@ -44,7 +44,7 @@ Convert a natural-language question and a SQLite database schema (DDL) into a ve
 }
 ```
 
-**CRITICAL output contract**: your final message must START with ` ```json ` and contain exactly one fenced JSON block, nothing else. All four fields (`task_id`, `sql`, `rationale`, `confidence`) are required; `task_id` is copied from the input unchanged. The SQL always lives inside the JSON as a single-line string value of the `sql` field. This applies to EVERY task, especially complex ones with JOINs, subqueries, or CTEs.
+**CRITICAL output contract**: the final result is written to the result file by `scripts/run.py`, not printed in the chat. All four fields (`task_id`, `sql`, `rationale`, `confidence`) are required; `task_id` is copied from the input unchanged. The SQL always lives inside the JSON as a single-line string value of the `sql` field. This applies to EVERY task, especially complex ones with JOINs, subqueries, or CTEs.
 
 ### Output Example
 
@@ -335,17 +335,29 @@ Use this skill when the input contains a natural-language question about data an
 3. Map question terms to schema elements (table names, column names, relationships).
 4. Generate a read-only SQLite SELECT or WITH statement that answers the question.
 5. Validate the generated SQL using `scripts/validate_sql.py` to ensure it is read-only, syntactically sound, and compatible with the provided schema. The `scripts/` path is relative to this skill's directory — if the terminal's working directory is elsewhere, locate the skill directory first. If the script cannot be located after one attempt, check the rules mentally and proceed.
-6. Output a single fenced JSON block with `task_id`, `sql`, `rationale`, and `confidence`.
+6. **Use the `terminal` tool (do not use process/background tools)** with the **absolute path** to run:
+
+   ```
+   python3 <skill_dir>/scripts/run.py \
+     --task_id "<task_id>" --sql "<your SQL>" --rationale "<short reason>" --confidence 0.8
+   ```
+
+   where `<skill_dir>` is the directory Hermes reports when loading this skill.
+7. `scripts/run.py` atomically writes the final result to the result file (path from the environment variable `AIASE_RESULT_PATH`, falling back to `./aiase_result.json`).
+   **You do not need to output or repeat the JSON in the chat message.**
 
 ## Verification
 
-After generating SQL, run `scripts/validate_sql.py` to confirm:
-- The SQL starts with SELECT or WITH (no DDL/DML).
-- No forbidden keywords (INSERT, UPDATE, DELETE, DROP, etc.) appear anywhere in the SQL.
-- The SQL is a single statement (no semicolons separating multiple queries).
+After generating SQL:
+1. Run `scripts/validate_sql.py` to confirm:
+   - The SQL starts with SELECT or WITH (no DDL/DML).
+   - No forbidden keywords (INSERT, UPDATE, DELETE, DROP, etc.) appear anywhere in the SQL.
+   - The SQL is a single statement (no semicolons separating multiple queries).
+2. Run `scripts/run.py` to write the result file.
+3. Confirm the result file is valid JSON with `task_id`, `sql`, `rationale`, and `confidence`.
 
-If validation fails, revise the SQL and re-validate before outputting.
+If validation fails, revise the SQL and re-validate before writing the result file.
 
 ## Final Reminder (applies to EVERY response)
 
-The last thing you output is always one ` ```json ` fenced block with `task_id` (copied verbatim from input), `sql` (single-line string), `rationale` (1-2 sentences), `confidence` (0.0-1.0) — and no other text. Never end with a ` ```sql ` block or bare SQL.
+The skill's final action is always to execute `scripts/run.py` with `task_id` (copied verbatim from input), `sql` (single-line string), `rationale` (1-2 sentences), and `confidence` (0.0-1.0). Do not print a ` ```json ` block or bare SQL in the chat — the grader reads the result file, not the conversation.

@@ -23,20 +23,24 @@ This skill performs **no LLM reasoning** — it just echoes structured input. If
 ## Procedure
 
 1. Take the entire JSON payload from the user message verbatim (it should be an object; if missing, default to `{}`).
-2. Invoke `scripts/run.py` with the JSON payload as a single argv string, e.g.:
+2. Extract `task_id` (default to an empty string if missing) and `name` (default to `"world"` if missing).
+3. **Use the `terminal` tool (do not use process/background tools)** with the **absolute path** to run:
 
    ```
-   python scripts/run.py '{"name":"world"}'
+   python3 <skill_dir>/scripts/run.py --task_id "<task_id>" --name "<name>"
    ```
 
-3. The script will print a single fenced JSON block to stdout. **Emit that fenced JSON block as your final response, unchanged.** Do not add any reasoning text after it.
+   where `<skill_dir>` is the directory Hermes reports when loading this skill.
+4. `scripts/run.py` atomically writes the final result to the result file (path from the environment variable `AIASE_RESULT_PATH`, falling back to `./aiase_result.json`).
+   **You do not need to output or repeat the JSON in the chat message.**
 
 ## Pitfalls
 
-- Do not paraphrase the script output. The grader extracts the **last** fenced ```json``` block from stdout; anything after it that looks like JSON would be picked up instead.
+- Do not use `process`/background tools to invoke the script; use the synchronous `terminal` tool.
 - Do not call the LLM to "improve" the greeting — this skill is intentionally deterministic.
+- Do not output a fenced JSON block in the final chat message; the grader reads the result file, not the conversation.
 
 ## Verification
 
-- The final output must be a single fenced ```json``` block whose top-level is an object with fields `ok=true`, `skill="hello-aiase"`, and `echo=<the input>`.
+- The result file must exist and be a valid JSON object with fields `task_id`, `greeting`, and `ok=true`.
 - If input contains `task_id`, the output `task_id` must equal the input `task_id`.

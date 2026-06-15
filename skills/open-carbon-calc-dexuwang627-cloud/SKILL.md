@@ -39,7 +39,7 @@ Natural language description of emission activities. Examples:
   "task_id": "string (from input, or generated)",
   "category": "string (electricity | fuel_combustion | refrigerant_leakage | transportation | combined)",
   "scope": "integer (1 or 2 or null for combined)",
-  "emission_breakdown": [
+  "breakdown": [
     {
       "scope": 1,
       "category": "refrigerant_leakage",
@@ -67,7 +67,14 @@ For every query, follow this sequence:
 3. **Validate**: Check that extracted values make sense (positive numbers, valid fuel types, known refrigerants)
 4. **Calculate**: Call `scripts/calculate.py` with extracted parameters. For multiple categories, make ONE `scripts/calculate.py combined` call instead of separate per-category calls — it returns the per-item breakdown and the total in a single invocation
 5. **Verify**: Sanity-check results (e.g., Scope 2 should be 0 for fuel-only, total should match sum)
-6. **Format**: Output as single fenced JSON block. The final message must contain ONLY that fenced JSON block — no surrounding prose
+6. **Write**: **Use the `terminal` tool (do not use process/background tools)** with the **absolute path** to run:
+
+   ```
+   python3 <skill_dir>/scripts/run.py --task_id "<task_id>" --payload '<result_json>'
+   ```
+
+   where `<skill_dir>` is the directory Hermes reports when loading this skill and `<result_json>` is the full carbon-calculation result JSON object. `scripts/run.py` atomically writes the result to the result file (path from the environment variable `AIASE_RESULT_PATH`, falling back to `./aiase_result.json`).
+   **You do not need to output or repeat the JSON in the chat message.**
 
 Keep intermediate reasoning brief — one short line per step. Minimizing turns and output length avoids timeouts and truncation.
 
@@ -182,7 +189,7 @@ python3 scripts/convert.py --table
 - Emission factors come from `scripts/emission_factors.json` — never hardcode values
 - Default AR version is AR5 unless user specifies AR6
 - Default electricity region is TW, year 2024
-- Output must be a single fenced JSON block
+- The skill's final action is to execute `scripts/run.py`; do not print a fenced JSON block in the chat
 - task_id must pass through from input
 - confidence must be 0.0–1.0
 
@@ -196,9 +203,15 @@ Use this skill when the input describes organizational activities involving ener
 2. **Extract**: Pull numeric values and units from the input. Convert units as needed using `scripts/convert.py` (度→kWh, 公升→L, 立方公尺→m³, 公噸→kg).
 3. **Validate**: Check that extracted values are reasonable (positive numbers, known fuel/refrigerant types).
 4. **Calculate**: Call `scripts/calculate.py` with the appropriate command and parameters. For multi-source inputs, use the `combined` command.
-5. **Aggregate**: If multiple emission sources are present, combine them using `calc_combined`.
-6. **Verify**: Compare calculated values against expected ranges. If a value seems unreasonable, re-verify via calculate.py.
-7. **Format**: Output a single fenced JSON block with task_id, category, breakdown, scope1_kg_co2e, scope2_kg_co2e, total_kg_co2e, confidence, and rationale.
+5. **Verify**: Compare calculated values against expected ranges. If a value seems unreasonable, re-verify via calculate.py.
+6. **Write**: **Use the `terminal` tool (do not use process/background tools)** with the **absolute path** to run:
+
+   ```
+   python3 <skill_dir>/scripts/run.py --task_id "<task_id>" --payload '<result_json>'
+   ```
+
+   where `<skill_dir>` is the directory Hermes reports when loading this skill and `<result_json>` is the full result JSON object containing `task_id`, `category`, `breakdown`, `scope1_kg_co2e`, `scope2_kg_co2e`, `total_kg_co2e`, `confidence`, and `rationale`. `scripts/run.py` atomically writes the result to the result file (path from the environment variable `AIASE_RESULT_PATH`, falling back to `./aiase_result.json`).
+   **You do not need to output or repeat the JSON in the chat message.**
 
 ## Verification
 
@@ -206,4 +219,4 @@ After generating output, verify correctness by:
 - Running `scripts/evaluator.py '<output_json>' <scenario_number>` to compare against ground truth.
 - Checking that all numeric values match calculate.py results within ±5% tolerance.
 - Ensuring GWP values match authoritative IPCC constants exactly (no tolerance).
-- Confirming the output JSON contains all required fields: task_id, category, breakdown (or emission_breakdown), scope1_kg_co2e, scope2_kg_co2e, total_kg_co2e, confidence.
+- Confirming the output JSON contains all required fields: task_id, category, breakdown (or breakdown), scope1_kg_co2e, scope2_kg_co2e, total_kg_co2e, confidence.

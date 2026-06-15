@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""hello-aiase / scripts/run.py — file-based 輸出契約入口（原子寫入結果檔）。
+"""text2sql-dexuwang627-cloud / scripts/run.py — file-based 輸出契約入口（原子寫入結果檔）。
 
 ⚠️ 自帶 resolve_result_path，不 import aiase_contract（安裝後找不到 repo 根模組）。
 """
@@ -13,9 +13,16 @@ def resolve_result_path() -> str:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--task_id", required=True)
-    ap.add_argument("--name", default="world")
+    ap.add_argument("--sql", required=True)
+    ap.add_argument("--rationale", default="")
+    ap.add_argument("--confidence", type=float, default=0.5)
     a = ap.parse_args()
-    result = {"task_id": a.task_id, "greeting": f"Hello, {a.name}!", "ok": True}
+    result = {
+        "task_id": a.task_id,
+        "sql": a.sql,
+        "rationale": a.rationale,
+        "confidence": a.confidence,
+    }
     path = resolve_result_path()
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     tmp = path + ".tmp"

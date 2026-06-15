@@ -117,7 +117,7 @@ The flows below were verified against live Hermes sessions on gemma4:31b (2026-0
    - `python3 scripts/calculate.py refrigerant '{"refrigerant": "R410A", "leakage_kg": 5, "ar_version": "ar5"}'` → 9620.0 kg CO₂e
    - `python3 scripts/calculate.py combined '{"items": [{"type": "electricity", "kwh": 1200}, {"type": "refrigerant", "refrigerant": "R410A", "leakage_kg": 5}]}'` → total 10188.8 kg CO₂e
 5. **Verify**: 568.8 + 9620.0 = 10188.8 ✓
-6. **Format**: Single fenced JSON block with task_id, breakdown, scope1, scope2, total.
+6. **Write**: `scripts/run.py` writes the result JSON (with task_id, breakdown, scope1, scope2, total) to the result file; no fenced JSON block is printed in the chat.
 
 ### Basic Track — dev_001: Aggregation Query
 

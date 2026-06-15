@@ -6,9 +6,9 @@ from __future__ import annotations
 import ast
 import json
 import multiprocessing
+import os
 import sys
 import traceback
-from contextlib import contextmanager
 from pathlib import Path
 
 def _find_repo_root() -> Path:
@@ -295,10 +295,18 @@ def _check_unreachable(tree: ast.AST, bugs: list[dict]) -> None:
                         })
 
 
-def emit(obj: dict) -> int:
-    sys.stdout.write("```json\n")
-    sys.stdout.write(json.dumps(obj, ensure_ascii=False, indent=2))
-    sys.stdout.write("\n```\n")
+def resolve_result_path() -> str:
+    return os.environ.get("AIASE_RESULT_PATH") or os.path.join(os.getcwd(), "aiase_result.json")
+
+
+def write_result(obj: dict) -> int:
+    path = resolve_result_path()
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False)
+    os.replace(tmp, path)  # 原子寫入，避免讀到寫一半的檔
+    print(f"written ok -> {path}")
     return 0
 
 
@@ -317,7 +325,7 @@ def main(argv: list[str]) -> int:
 
     # If no code provided, nothing to analyze
     if not code:
-        return emit({
+        return write_result({
             "task_id": task_id,
             "verdict": "clean",
             "bugs": [],
@@ -390,7 +398,7 @@ def main(argv: list[str]) -> int:
 
     # Determine verdict and confidence
     if not bugs:
-        return emit({
+        return write_result({
             "task_id": task_id,
             "verdict": "clean",
             "bugs": [],
@@ -411,7 +419,7 @@ def main(argv: list[str]) -> int:
     else:
         confidence = 0.5
 
-    return emit({
+    return write_result({
         "task_id": task_id,
         "verdict": "buggy",
         "bugs": bugs,
